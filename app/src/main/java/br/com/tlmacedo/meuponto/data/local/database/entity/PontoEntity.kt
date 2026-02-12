@@ -1,3 +1,4 @@
+// Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/data/local/database/entity/PontoEntity.kt
 package br.com.tlmacedo.meuponto.data.local.database.entity
 
 import androidx.room.ColumnInfo
@@ -10,16 +11,17 @@ import java.time.LocalDateTime
 /**
  * Entidade Room que representa um registro de ponto no banco de dados.
  *
- * Esta classe é responsável pelo mapeamento entre o modelo de domínio
- * e a tabela do banco de dados SQLite.
+ * Esta classe é responsável pelo mapeamento entre o modelo de domínio [Ponto]
+ * e a tabela do banco de dados SQLite. Utiliza o padrão de conversão
+ * bidirecional através dos métodos [toDomain] e [fromDomain].
  *
- * @property id Identificador único do registro (auto-gerado)
+ * @property id Identificador único do registro (auto-gerado pelo Room)
  * @property dataHora Data e hora da batida de ponto
- * @property tipo Tipo da batida (ENTRADA, SAIDA_ALMOCO, RETORNO_ALMOCO, SAIDA)
- * @property editadoManualmente Indica se o registro foi editado manualmente
- * @property observacao Observação opcional do usuário
- * @property criadoEm Data/hora de criação do registro
- * @property atualizadoEm Data/hora da última atualização
+ * @property tipo Tipo da batida (ENTRADA ou SAIDA)
+ * @property isEditadoManualmente Indica se o registro foi editado manualmente pelo usuário
+ * @property observacao Observação opcional do usuário sobre o registro
+ * @property criadoEm Data e hora de criação do registro no sistema
+ * @property atualizadoEm Data e hora da última atualização do registro
  *
  * @author Thiago
  * @since 1.0.0
@@ -36,8 +38,8 @@ data class PontoEntity(
     @ColumnInfo(name = "tipo")
     val tipo: TipoPonto,
 
-    @ColumnInfo(name = "editado_manualmente")
-    val editadoManualmente: Boolean = false,
+    @ColumnInfo(name = "is_editado_manualmente")
+    val isEditadoManualmente: Boolean = false,
 
     @ColumnInfo(name = "observacao")
     val observacao: String? = null,
@@ -51,14 +53,14 @@ data class PontoEntity(
     /**
      * Converte a entidade do banco de dados para o modelo de domínio.
      *
-     * @return Modelo de domínio Ponto
+     * @return Modelo de domínio [Ponto] correspondente
      */
     fun toDomain(): Ponto {
         return Ponto(
             id = id,
             dataHora = dataHora,
             tipo = tipo,
-            editadoManualmente = editadoManualmente,
+            isEditadoManualmente = isEditadoManualmente,
             observacao = observacao,
             criadoEm = criadoEm,
             atualizadoEm = atualizadoEm
@@ -69,15 +71,15 @@ data class PontoEntity(
         /**
          * Converte um modelo de domínio para entidade do banco de dados.
          *
-         * @param ponto Modelo de domínio
-         * @return Entidade para persistência
+         * @param ponto Modelo de domínio a ser convertido
+         * @return Entidade [PontoEntity] para persistência no Room
          */
         fun fromDomain(ponto: Ponto): PontoEntity {
             return PontoEntity(
                 id = ponto.id,
                 dataHora = ponto.dataHora,
                 tipo = ponto.tipo,
-                editadoManualmente = ponto.editadoManualmente,
+                isEditadoManualmente = ponto.isEditadoManualmente,
                 observacao = ponto.observacao,
                 criadoEm = ponto.criadoEm,
                 atualizadoEm = ponto.atualizadoEm

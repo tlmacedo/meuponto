@@ -1,3 +1,4 @@
+// Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/domain/usecase/ponto/ObterPontosDoDiaUseCase.kt
 package br.com.tlmacedo.meuponto.domain.usecase.ponto
 
 import br.com.tlmacedo.meuponto.domain.model.Ponto
@@ -9,10 +10,11 @@ import javax.inject.Inject
 /**
  * Caso de uso para obter os pontos de um dia específico.
  *
- * Retorna um Flow que emite a lista atualizada de pontos
- * sempre que houver alterações no banco de dados.
+ * Retorna um [Flow] reativo que emite a lista atualizada de pontos sempre
+ * que houver alterações no banco de dados. Ideal para observação em tempo
+ * real na interface do usuário.
  *
- * @property repository Repositório de pontos
+ * @property repository Repositório de pontos para busca dos registros
  *
  * @author Thiago
  * @since 1.0.0
@@ -21,10 +23,10 @@ class ObterPontosDoDiaUseCase @Inject constructor(
     private val repository: PontoRepository
 ) {
     /**
-     * Observa os pontos de uma data específica.
+     * Observa os pontos de uma data específica de forma reativa.
      *
-     * @param data Data para buscar (padrão: hoje)
-     * @return Flow com a lista de pontos ordenados por hora
+     * @param data Data para buscar os pontos (padrão: hoje)
+     * @return [Flow] que emite a lista de pontos ordenados por hora
      */
     operator fun invoke(data: LocalDate = LocalDate.now()): Flow<List<Ponto>> {
         return repository.observarPontosPorData(data)
