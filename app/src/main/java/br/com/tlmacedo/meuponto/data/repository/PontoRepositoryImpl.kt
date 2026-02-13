@@ -24,6 +24,7 @@ import javax.inject.Singleton
  *
  * @author Thiago
  * @since 1.0.0
+ * @updated 2.0.0 - Adicionado suporte a múltiplos empregos e marcadores
  */
 @Singleton
 class PontoRepositoryImpl @Inject constructor(
@@ -34,51 +35,56 @@ class PontoRepositoryImpl @Inject constructor(
     // Operações de Escrita (CRUD)
     // ========================================================================
 
-    /**
-     * Insere um novo registro de ponto no banco de dados.
-     */
     override suspend fun inserir(ponto: Ponto): Long {
         return pontoDao.inserir(ponto.toEntity())
     }
 
-    /**
-     * Atualiza um registro de ponto existente.
-     */
     override suspend fun atualizar(ponto: Ponto) {
         pontoDao.atualizar(ponto.toEntity())
     }
 
-    /**
-     * Remove um registro de ponto do banco de dados.
-     */
     override suspend fun excluir(ponto: Ponto) {
         pontoDao.excluir(ponto.toEntity())
     }
 
+    override suspend fun excluirPorId(id: Long) {
+        pontoDao.excluirPorId(id)
+    }
+
     // ========================================================================
-    // Operações de Leitura (Queries)
+    // Operações de Leitura - Por ID
     // ========================================================================
 
-    /**
-     * Busca um ponto pelo ID e converte para modelo de domínio.
-     */
     override suspend fun buscarPorId(id: Long): Ponto? {
         return pontoDao.buscarPorId(id)?.toDomain()
     }
 
-    /**
-     * Busca todos os pontos de uma data específica.
-     * Utiliza o Flow interno e pega apenas o primeiro resultado.
-     */
+    override fun observarPorId(id: Long): Flow<Ponto?> {
+        return pontoDao.observarPorId(id).map { entity ->
+            entity?.toDomain()
+        }
+    }
+
+    // ========================================================================
+    // Operações de Leitura - Legadas (retrocompatibilidade)
+    // ========================================================================
+
+    @Suppress("DEPRECATION")
+    @Deprecated(
+        message = "Use buscarPorEmpregoEData para suporte a múltiplos empregos",
+        replaceWith = ReplaceWith("buscarPorEmpregoEData(empregoId, data)")
+    )
     override suspend fun buscarPontosPorData(data: LocalDate): List<Ponto> {
         return pontoDao.listarPorData(data)
             .first()
             .map { it.toDomain() }
     }
 
-    /**
-     * Busca o último ponto registrado em uma data.
-     */
+    @Suppress("DEPRECATION")
+    @Deprecated(
+        message = "Use buscarUltimoPonto(empregoId) para suporte a múltiplos empregos",
+        replaceWith = ReplaceWith("buscarUltimoPonto(empregoId)")
+    )
     override suspend fun buscarUltimoPontoDoDia(data: LocalDate): Ponto? {
         return pontoDao.listarPorData(data)
             .first()
@@ -86,31 +92,33 @@ class PontoRepositoryImpl @Inject constructor(
             ?.toDomain()
     }
 
-    // ========================================================================
-    // Operações Reativas (Flows)
-    // ========================================================================
-
-    /**
-     * Observa os pontos de uma data de forma reativa.
-     */
+    @Suppress("DEPRECATION")
+    @Deprecated(
+        message = "Use observarPorEmpregoEData para suporte a múltiplos empregos",
+        replaceWith = ReplaceWith("observarPorEmpregoEData(empregoId, data)")
+    )
     override fun observarPontosPorData(data: LocalDate): Flow<List<Ponto>> {
         return pontoDao.listarPorData(data).map { entities ->
             entities.map { it.toDomain() }
         }
     }
 
-    /**
-     * Observa todos os pontos de forma reativa.
-     */
+    @Suppress("DEPRECATION")
+    @Deprecated(
+        message = "Use observarPorEmprego para suporte a múltiplos empregos",
+        replaceWith = ReplaceWith("observarPorEmprego(empregoId)")
+    )
     override fun observarTodos(): Flow<List<Ponto>> {
         return pontoDao.listarTodos().map { entities ->
             entities.map { it.toDomain() }
         }
     }
 
-    /**
-     * Observa os pontos de um período de forma reativa.
-     */
+    @Suppress("DEPRECATION")
+    @Deprecated(
+        message = "Use observarPorEmpregoEPeriodo para suporte a múltiplos empregos",
+        replaceWith = ReplaceWith("observarPorEmpregoEPeriodo(empregoId, dataInicio, dataFim)")
+    )
     override fun observarPontosPorPeriodo(
         dataInicio: LocalDate,
         dataFim: LocalDate
@@ -118,5 +126,100 @@ class PontoRepositoryImpl @Inject constructor(
         return pontoDao.listarPorPeriodo(dataInicio, dataFim).map { entities ->
             entities.map { it.toDomain() }
         }
+    }
+
+    // ========================================================================
+    // Operações de Leitura - Por Emprego (Novas)
+    // ========================================================================
+
+    override fun observarPorEmprego(empregoId: Long): Flow<List<Ponto>> {
+        return pontoDao.listarPorEmprego(empregoId).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override fun observarPorEmpregoEData(empregoId: Long, data: LocalDate): Flow<List<Ponto>> {
+        return pontoDao.listarPorEmpregoEData(empregoId, data).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override suspend fun buscarPorEmpregoEData(empregoId: Long, data: LocalDate): List<Ponto> {
+        return pontoDao.buscarPorEmpregoEData(empregoId, data).map { it.toDomain() }
+    }
+
+    override fun observarPorEmpregoEPeriodo(
+        empregoId: Long,
+        dataInicio: LocalDate,
+        dataFim: LocalDate
+    ): Flow<List<Ponto>> {
+        return pontoDao.listarPorEmpregoEPeriodo(empregoId, dataInicio, dataFim).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override suspend fun buscarPorEmpregoEPeriodo(
+        empregoId: Long,
+        dataInicio: LocalDate,
+        dataFim: LocalDate
+    ): List<Ponto> {
+        return pontoDao.buscarPorEmpregoEPeriodo(empregoId, dataInicio, dataFim)
+            .map { it.toDomain() }
+    }
+
+    // ========================================================================
+    // Operações de Leitura - Por Marcador
+    // ========================================================================
+
+    override fun observarPorMarcador(marcadorId: Long): Flow<List<Ponto>> {
+        return pontoDao.listarPorMarcador(marcadorId).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    // ========================================================================
+    // Operações de Contagem
+    // ========================================================================
+
+    override suspend fun contarPorEmprego(empregoId: Long): Int {
+        return pontoDao.contarPorEmprego(empregoId)
+    }
+
+    override suspend fun contarPorEmpregoEData(empregoId: Long, data: LocalDate): Int {
+        return pontoDao.contarPorEmpregoEData(empregoId, data)
+    }
+
+    override suspend fun contarPorEmpregoEPeriodo(
+        empregoId: Long,
+        dataInicio: LocalDate,
+        dataFim: LocalDate
+    ): Int {
+        return pontoDao.contarPorEmpregoEPeriodo(empregoId, dataInicio, dataFim)
+    }
+
+    // ========================================================================
+    // Operações Auxiliares
+    // ========================================================================
+
+    override fun observarDatasComRegistro(empregoId: Long): Flow<List<LocalDate>> {
+        return pontoDao.listarDatasComRegistro(empregoId)
+    }
+
+    override suspend fun buscarUltimoPonto(empregoId: Long): Ponto? {
+        return pontoDao.buscarUltimoPonto(empregoId)?.toDomain()
+    }
+
+    override fun observarUltimoPonto(empregoId: Long): Flow<Ponto?> {
+        return pontoDao.observarUltimoPonto(empregoId).map { entity ->
+            entity?.toDomain()
+        }
+    }
+
+    // ========================================================================
+    // Operações de Migração
+    // ========================================================================
+
+    override suspend fun migrarParaEmprego(empregoIdOrigem: Long, empregoIdDestino: Long): Int {
+        return pontoDao.migrarParaEmprego(empregoIdOrigem, empregoIdDestino)
     }
 }
