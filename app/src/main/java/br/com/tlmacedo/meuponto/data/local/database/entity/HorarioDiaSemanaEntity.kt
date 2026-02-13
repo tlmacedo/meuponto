@@ -72,3 +72,54 @@ data class HorarioDiaSemanaEntity(
     val criadoEm: LocalDateTime = LocalDateTime.now(),
     val atualizadoEm: LocalDateTime = LocalDateTime.now()
 )
+
+// ============================================================================
+// Funções de Mapeamento (Mapper Extensions)
+// ============================================================================
+
+/**
+ * Converte HorarioDiaSemanaEntity (camada de dados) para HorarioDiaSemana (camada de domínio).
+ *
+ * @return Instância de [HorarioDiaSemana] com os dados mapeados
+ */
+fun HorarioDiaSemanaEntity.toDomain(): br.com.tlmacedo.meuponto.domain.model.HorarioDiaSemana =
+    br.com.tlmacedo.meuponto.domain.model.HorarioDiaSemana(
+        id = id,
+        empregoId = empregoId,
+        diaSemana = diaSemana,
+        ativo = ativo,
+        cargaHorariaMinutos = cargaHorariaMinutos,
+        entradaIdeal = entradaIdeal,
+        saidaIntervaloIdeal = saidaIntervaloIdeal,
+        voltaIntervaloIdeal = voltaIntervaloIdeal,
+        saidaIdeal = saidaIdeal,
+        intervaloMinimoMinutos = intervaloMinimoMinutos,
+        toleranciaIntervaloMaisMinutos = toleranciaIntervaloMaisMinutos,
+        toleranciaIntervaloMenosMinutos = toleranciaIntervaloMenosMinutos,
+        criadoEm = criadoEm,
+        atualizadoEm = atualizadoEm
+    )
+
+/**
+ * Converte HorarioDiaSemana (camada de domínio) para HorarioDiaSemanaEntity (camada de dados).
+ *
+ * @return Instância de [HorarioDiaSemanaEntity] pronta para persistência
+ */
+fun br.com.tlmacedo.meuponto.domain.model.HorarioDiaSemana.toEntity(): HorarioDiaSemanaEntity =
+    HorarioDiaSemanaEntity(
+        id = id,
+        empregoId = empregoId,
+        diaSemana = diaSemana,
+        ativo = ativo,
+        cargaHorariaMinutos = cargaHorariaMinutos,
+        entradaIdeal = entradaIdeal,
+        saidaIntervaloIdeal = saidaIntervaloIdeal,
+        voltaIntervaloIdeal = voltaIntervaloIdeal,
+        saidaIdeal = saidaIdeal,
+        intervaloMinimoMinutos = intervaloMinimoMinutos,
+        toleranciaIntervaloMaisMinutos = toleranciaIntervaloMaisMinutos,
+        toleranciaIntervaloMenosMinutos = toleranciaIntervaloMenosMinutos,
+        criadoEm = criadoEm,
+        atualizadoEm = atualizadoEm
+    )
+

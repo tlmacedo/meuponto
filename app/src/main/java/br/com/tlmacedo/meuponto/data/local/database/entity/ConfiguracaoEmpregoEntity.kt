@@ -99,3 +99,72 @@ data class ConfiguracaoEmpregoEntity(
     val criadoEm: LocalDateTime = LocalDateTime.now(),
     val atualizadoEm: LocalDateTime = LocalDateTime.now()
 )
+
+// ============================================================================
+// Funções de Mapeamento (Mapper Extensions)
+// ============================================================================
+
+/**
+ * Converte ConfiguracaoEmpregoEntity (camada de dados) para ConfiguracaoEmprego (camada de domínio).
+ *
+ * @return Instância de [ConfiguracaoEmprego] com os dados mapeados
+ */
+fun ConfiguracaoEmpregoEntity.toDomain(): br.com.tlmacedo.meuponto.domain.model.ConfiguracaoEmprego =
+    br.com.tlmacedo.meuponto.domain.model.ConfiguracaoEmprego(
+        id = id,
+        empregoId = empregoId,
+        jornadaMaximaDiariaMinutos = jornadaMaximaDiariaMinutos,
+        intervaloMinimoInterjornadaMinutos = intervaloMinimoInterjornadaMinutos,
+        exigeJustificativaInconsistencia = exigeJustificativaInconsistencia,
+        habilitarNsr = habilitarNsr,
+        tipoNsr = tipoNsr,
+        habilitarLocalizacao = habilitarLocalizacao,
+        localizacaoAutomatica = localizacaoAutomatica,
+        exibirLocalizacaoDetalhes = exibirLocalizacaoDetalhes,
+        exibirDuracaoTurno = exibirDuracaoTurno,
+        exibirDuracaoIntervalo = exibirDuracaoIntervalo,
+        primeiroDiaSemana = primeiroDiaSemana,
+        primeiroDiaMes = primeiroDiaMes,
+        zerarSaldoSemanal = zerarSaldoSemanal,
+        zerarSaldoMensal = zerarSaldoMensal,
+        ocultarSaldoTotal = ocultarSaldoTotal,
+        periodoBancoHorasMeses = periodoBancoHorasMeses,
+        ultimoFechamentoBanco = ultimoFechamentoBanco,
+        diasUteisLembreteFechamento = diasUteisLembreteFechamento,
+        habilitarSugestaoAjuste = habilitarSugestaoAjuste,
+        criadoEm = criadoEm,
+        atualizadoEm = atualizadoEm
+    )
+
+/**
+ * Converte ConfiguracaoEmprego (camada de domínio) para ConfiguracaoEmpregoEntity (camada de dados).
+ *
+ * @return Instância de [ConfiguracaoEmpregoEntity] pronta para persistência
+ */
+fun br.com.tlmacedo.meuponto.domain.model.ConfiguracaoEmprego.toEntity(): ConfiguracaoEmpregoEntity =
+    ConfiguracaoEmpregoEntity(
+        id = id,
+        empregoId = empregoId,
+        jornadaMaximaDiariaMinutos = jornadaMaximaDiariaMinutos,
+        intervaloMinimoInterjornadaMinutos = intervaloMinimoInterjornadaMinutos,
+        exigeJustificativaInconsistencia = exigeJustificativaInconsistencia,
+        habilitarNsr = habilitarNsr,
+        tipoNsr = tipoNsr,
+        habilitarLocalizacao = habilitarLocalizacao,
+        localizacaoAutomatica = localizacaoAutomatica,
+        exibirLocalizacaoDetalhes = exibirLocalizacaoDetalhes,
+        exibirDuracaoTurno = exibirDuracaoTurno,
+        exibirDuracaoIntervalo = exibirDuracaoIntervalo,
+        primeiroDiaSemana = primeiroDiaSemana,
+        primeiroDiaMes = primeiroDiaMes,
+        zerarSaldoSemanal = zerarSaldoSemanal,
+        zerarSaldoMensal = zerarSaldoMensal,
+        ocultarSaldoTotal = ocultarSaldoTotal,
+        periodoBancoHorasMeses = periodoBancoHorasMeses,
+        ultimoFechamentoBanco = ultimoFechamentoBanco,
+        diasUteisLembreteFechamento = diasUteisLembreteFechamento,
+        habilitarSugestaoAjuste = habilitarSugestaoAjuste,
+        criadoEm = criadoEm,
+        atualizadoEm = atualizadoEm
+    )
+

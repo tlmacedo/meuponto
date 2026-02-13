@@ -52,3 +52,44 @@ data class MarcadorEntity(
     val criadoEm: LocalDateTime = LocalDateTime.now(),
     val atualizadoEm: LocalDateTime = LocalDateTime.now()
 )
+
+// ============================================================================
+// Funções de Mapeamento (Mapper Extensions)
+// ============================================================================
+
+/**
+ * Converte MarcadorEntity (camada de dados) para Marcador (camada de domínio).
+ *
+ * @return Instância de [Marcador] com os dados mapeados
+ */
+fun MarcadorEntity.toDomain(): br.com.tlmacedo.meuponto.domain.model.Marcador =
+    br.com.tlmacedo.meuponto.domain.model.Marcador(
+        id = id,
+        empregoId = empregoId,
+        nome = nome,
+        cor = cor,
+        icone = icone,
+        ativo = ativo,
+        ordem = ordem,
+        criadoEm = criadoEm,
+        atualizadoEm = atualizadoEm
+    )
+
+/**
+ * Converte Marcador (camada de domínio) para MarcadorEntity (camada de dados).
+ *
+ * @return Instância de [MarcadorEntity] pronta para persistência
+ */
+fun br.com.tlmacedo.meuponto.domain.model.Marcador.toEntity(): MarcadorEntity =
+    MarcadorEntity(
+        id = id,
+        empregoId = empregoId,
+        nome = nome,
+        cor = cor,
+        icone = icone,
+        ativo = ativo,
+        ordem = ordem,
+        criadoEm = criadoEm,
+        atualizadoEm = atualizadoEm
+    )
+

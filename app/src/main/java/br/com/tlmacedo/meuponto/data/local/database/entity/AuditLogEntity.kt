@@ -1,6 +1,7 @@
 // Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/data/local/database/entity/AuditLogEntity.kt
 package br.com.tlmacedo.meuponto.data.local.database.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -8,18 +9,18 @@ import br.com.tlmacedo.meuponto.domain.model.AcaoAuditoria
 import java.time.LocalDateTime
 
 /**
- * Entidade Room que registra todas as alterações no banco de dados para auditoria.
- * 
- * Permite rastrear quem alterou o quê e quando, possibilitando reversão de ações.
- * Registros com mais de 1 ano são automaticamente removidos.
+ * Entidade Room que representa um log de auditoria no banco de dados.
  *
- * @property id Identificador único auto-gerado
- * @property entidade Nome da tabela/entidade afetada (ex: "pontos", "empregos")
+ * Esta entidade armazena registros de alterações realizadas nas entidades
+ * do sistema para fins de auditoria e rastreabilidade.
+ *
+ * @property id Identificador único gerado automaticamente
+ * @property entidade Nome da entidade afetada (ex: "Ponto", "Emprego")
  * @property entidadeId ID do registro afetado
- * @property acao Tipo de ação (INSERT, UPDATE, DELETE)
- * @property dadosAnteriores JSON com os dados antes da alteração (null para INSERT)
- * @property dadosNovos JSON com os dados após a alteração (null para DELETE)
- * @property criadoEm Timestamp do registro da ação
+ * @property acao Tipo de ação realizada (CRIAR, ATUALIZAR, EXCLUIR)
+ * @property dadosAnteriores JSON com os dados antes da alteração
+ * @property dadosNovos JSON com os dados após a alteração
+ * @property criadoEm Data/hora da ação
  *
  * @author Thiago
  * @since 2.0.0
@@ -27,20 +28,62 @@ import java.time.LocalDateTime
 @Entity(
     tableName = "audit_logs",
     indices = [
-        Index(value = ["entidade"]),
-        Index(value = ["entidadeId"]),
-        Index(value = ["acao"]),
-        Index(value = ["criadoEm"]), // Para limpeza de registros antigos
-        Index(value = ["entidade", "entidadeId"])
+        Index(value = ["entidade", "entidade_id"]),
+        Index(value = ["criado_em"]),
+        Index(value = ["acao"])
     ]
 )
 data class AuditLogEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+
+    @ColumnInfo(name = "entidade")
     val entidade: String,
+
+    @ColumnInfo(name = "entidade_id")
     val entidadeId: Long,
+
+    @ColumnInfo(name = "acao")
     val acao: AcaoAuditoria,
-    val dadosAnteriores: String? = null, // JSON
-    val dadosNovos: String? = null, // JSON
+
+    @ColumnInfo(name = "dados_anteriores")
+    val dadosAnteriores: String? = null,
+
+    @ColumnInfo(name = "dados_novos")
+    val dadosNovos: String? = null,
+
+    @ColumnInfo(name = "criado_em")
     val criadoEm: LocalDateTime = LocalDateTime.now()
 )
+
+// ============================================================================
+// Funções de Mapeamento (Mapper Extensions)
+// ============================================================================
+
+/**
+ * Converte AuditLogEntity (camada de dados) para AuditLog (camada de domínio).
+ */
+fun AuditLogEntity.toDomain(): br.com.tlmacedo.meuponto.domain.model.AuditLog =
+    br.com.tlmacedo.meuponto.domain.model.AuditLog(
+        id = id,
+        entidade = entidade,
+        entidadeId = entidadeId,
+        acao = acao,
+        dadosAnteriores = dadosAnteriores,
+        dadosNovos = dadosNovos,
+        criadoEm = criadoEm
+    )
+
+/**
+ * Converte AuditLog (camada de domínio) para AuditLogEntity (camada de dados).
+ */
+fun br.com.tlmacedo.meuponto.domain.model.AuditLog.toEntity(): AuditLogEntity =
+    AuditLogEntity(
+        id = id,
+        entidade = entidade,
+        entidadeId = entidadeId,
+        acao = acao,
+        dadosAnteriores = dadosAnteriores,
+        dadosNovos = dadosNovos,
+        criadoEm = criadoEm
+    )

@@ -49,3 +49,38 @@ data class AjusteSaldoEntity(
     val justificativa: String,
     val criadoEm: LocalDateTime = LocalDateTime.now()
 )
+
+// ============================================================================
+// Funções de Mapeamento (Mapper Extensions)
+// ============================================================================
+
+/**
+ * Converte AjusteSaldoEntity (camada de dados) para AjusteSaldo (camada de domínio).
+ *
+ * @return Instância de [AjusteSaldo] com os dados mapeados
+ */
+fun AjusteSaldoEntity.toDomain(): br.com.tlmacedo.meuponto.domain.model.AjusteSaldo =
+    br.com.tlmacedo.meuponto.domain.model.AjusteSaldo(
+        id = id,
+        empregoId = empregoId,
+        data = data,
+        minutos = minutos,
+        justificativa = justificativa,
+        criadoEm = criadoEm
+    )
+
+/**
+ * Converte AjusteSaldo (camada de domínio) para AjusteSaldoEntity (camada de dados).
+ *
+ * @return Instância de [AjusteSaldoEntity] pronta para persistência
+ */
+fun br.com.tlmacedo.meuponto.domain.model.AjusteSaldo.toEntity(): AjusteSaldoEntity =
+    AjusteSaldoEntity(
+        id = id,
+        empregoId = empregoId,
+        data = data,
+        minutos = minutos,
+        justificativa = justificativa,
+        criadoEm = criadoEm
+    )
+

@@ -42,3 +42,41 @@ data class EmpregoEntity(
     val criadoEm: LocalDateTime = LocalDateTime.now(),
     val atualizadoEm: LocalDateTime = LocalDateTime.now()
 )
+
+// ============================================================================
+// Funções de Mapeamento (Mapper Extensions)
+// ============================================================================
+
+/**
+ * Converte EmpregoEntity (camada de dados) para Emprego (camada de domínio).
+ *
+ * @return Instância de [Emprego] com os dados mapeados
+ */
+fun EmpregoEntity.toDomain(): br.com.tlmacedo.meuponto.domain.model.Emprego =
+    br.com.tlmacedo.meuponto.domain.model.Emprego(
+        id = id,
+        nome = nome,
+        descricao = descricao,
+        ativo = ativo,
+        arquivado = arquivado,
+        ordem = ordem,
+        criadoEm = criadoEm,
+        atualizadoEm = atualizadoEm
+    )
+
+/**
+ * Converte Emprego (camada de domínio) para EmpregoEntity (camada de dados).
+ *
+ * @return Instância de [EmpregoEntity] pronta para persistência
+ */
+fun br.com.tlmacedo.meuponto.domain.model.Emprego.toEntity(): EmpregoEntity =
+    EmpregoEntity(
+        id = id,
+        nome = nome,
+        descricao = descricao,
+        ativo = ativo,
+        arquivado = arquivado,
+        ordem = ordem,
+        criadoEm = criadoEm,
+        atualizadoEm = atualizadoEm
+    )
