@@ -29,13 +29,11 @@ import br.com.tlmacedo.meuponto.presentation.screen.history.HistoryScreen
 import br.com.tlmacedo.meuponto.presentation.screen.home.HomeScreen
 import br.com.tlmacedo.meuponto.presentation.screen.settings.SettingsScreen
 import br.com.tlmacedo.meuponto.presentation.screen.settings.empregos.GerenciarEmpregosScreen
+import br.com.tlmacedo.meuponto.presentation.screen.settings.empregos.editar.EditarEmpregoScreen
 import br.com.tlmacedo.meuponto.presentation.screen.settings.sobre.SobreScreen
 
 /**
  * NavHost principal da aplicação MeuPonto.
- *
- * Define todas as rotas de navegação e suas respectivas telas,
- * gerenciando a pilha de navegação do aplicativo.
  *
  * @param navController Controlador de navegação
  * @param modifier Modificador para o container
@@ -57,7 +55,6 @@ fun MeuPontoNavHost(
         ) {
             // ===== TELAS PRINCIPAIS =====
 
-            // Tela inicial (Home)
             composable(MeuPontoDestinations.HOME) {
                 HomeScreen(
                     onNavigateToHistory = {
@@ -72,7 +69,6 @@ fun MeuPontoNavHost(
                 )
             }
 
-            // Tela de histórico
             composable(MeuPontoDestinations.HISTORY) {
                 HistoryScreen(
                     onNavigateBack = { navController.popBackStack() },
@@ -82,7 +78,6 @@ fun MeuPontoNavHost(
                 )
             }
 
-            // Tela de edição de ponto
             composable(
                 route = MeuPontoDestinations.EDIT_PONTO,
                 arguments = listOf(
@@ -99,7 +94,6 @@ fun MeuPontoNavHost(
 
             // ===== CONFIGURAÇÕES =====
 
-            // Tela principal de configurações
             composable(MeuPontoDestinations.SETTINGS) {
                 SettingsScreen(
                     onNavigateBack = { navController.popBackStack() },
@@ -124,7 +118,6 @@ fun MeuPontoNavHost(
                 )
             }
 
-            // Tela de gerenciamento de empregos
             composable(MeuPontoDestinations.GERENCIAR_EMPREGOS) {
                 GerenciarEmpregosScreen(
                     onNavigateBack = { navController.popBackStack() },
@@ -137,7 +130,6 @@ fun MeuPontoNavHost(
                 )
             }
 
-            // Tela de edição/criação de emprego
             composable(
                 route = MeuPontoDestinations.EDITAR_EMPREGO,
                 arguments = listOf(
@@ -147,50 +139,39 @@ fun MeuPontoNavHost(
                     }
                 )
             ) {
-                // TODO: Implementar EditarEmpregoScreen
-                PlaceholderScreen(
-                    titulo = "Editar Emprego",
+                EditarEmpregoScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
 
-            // Tela de configuração de jornada
             composable(MeuPontoDestinations.CONFIGURACAO_JORNADA) {
-                // TODO: Implementar ConfiguracaoJornadaScreen
                 PlaceholderScreen(
                     titulo = "Configuração de Jornada",
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
 
-            // Tela de horários por dia da semana
             composable(MeuPontoDestinations.HORARIOS_TRABALHO) {
-                // TODO: Implementar HorariosTrabalhoScreen
                 PlaceholderScreen(
                     titulo = "Horários por Dia",
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
 
-            // Tela de ajustes de banco de horas
             composable(MeuPontoDestinations.AJUSTES_BANCO_HORAS) {
-                // TODO: Implementar AjustesBancoHorasScreen
                 PlaceholderScreen(
                     titulo = "Ajustes de Saldo",
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
 
-            // Tela de marcadores
             composable(MeuPontoDestinations.MARCADORES) {
-                // TODO: Implementar MarcadoresScreen
                 PlaceholderScreen(
                     titulo = "Marcadores",
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
 
-            // Tela sobre o app
             composable(MeuPontoDestinations.SOBRE) {
                 SobreScreen(
                     onNavigateBack = { navController.popBackStack() }
@@ -200,17 +181,6 @@ fun MeuPontoNavHost(
     }
 }
 
-/**
- * Tela placeholder para funcionalidades ainda não implementadas.
- *
- * Exibe um título e mensagem indicando que a funcionalidade está em desenvolvimento.
- *
- * @param titulo Título da tela
- * @param onNavigateBack Callback para voltar à tela anterior
- *
- * @author Thiago
- * @since 2.0.0
- */
 @Composable
 private fun PlaceholderScreen(
     titulo: String,
@@ -231,9 +201,7 @@ private fun PlaceholderScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(
                     imageVector = Icons.Default.Construction,
                     contentDescription = null,

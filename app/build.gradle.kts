@@ -50,16 +50,20 @@ android {
     }
 
     lint {
-        // Desabilita análise de lint em fontes de teste (bug conhecido com Hilt/KSP)
         checkTestSources = false
-        // Não aborta o build por erros de lint durante desenvolvimento
         abortOnError = false
-        // Continua mesmo com warnings
         warningsAsErrors = false
+    }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/LICENSE.md"
+            excludes += "/META-INF/LICENSE-notice.md"
+        }
     }
 }
 
-// Configuração do Room para exportar schemas
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
@@ -97,12 +101,28 @@ dependencies {
     // Timber
     implementation(libs.timber)
 
-    // Testes
+    // ========================================================================
+    // Unit Tests
+    // ========================================================================
     testImplementation(libs.junit)
+    testImplementation(libs.bundles.testing)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.hilt.android.testing)
+    kspTest(libs.hilt.android.compiler)
+
+    // ========================================================================
+    // Instrumented Tests (Android)
+    // ========================================================================
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
+    androidTestImplementation(libs.mockk.android)
+    androidTestImplementation(libs.turbine)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.truth)
+    androidTestImplementation(libs.hilt.android.testing)
+    kspAndroidTest(libs.hilt.android.compiler)
 
     // Debug
     debugImplementation(libs.androidx.ui.tooling)
