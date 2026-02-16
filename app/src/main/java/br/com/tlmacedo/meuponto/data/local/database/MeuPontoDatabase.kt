@@ -24,12 +24,6 @@ import br.com.tlmacedo.meuponto.data.local.database.entity.PontoEntity
 
 /**
  * Classe principal do banco de dados Room.
- *
- * Define todas as entidades e fornece acesso aos DAOs.
- *
- * @author Thiago
- * @since 1.0.0
- * @updated 2.0.0 - Adicionado suporte a múltiplos empregos e novas entidades
  */
 @Database(
     entities = [
@@ -42,15 +36,11 @@ import br.com.tlmacedo.meuponto.data.local.database.entity.PontoEntity
         MarcadorEntity::class,
         AuditLogEntity::class
     ],
-    version = 2,
+    version = 7,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class MeuPontoDatabase : RoomDatabase() {
-
-    // ========================================================================
-    // DAOs
-    // ========================================================================
 
     abstract fun pontoDao(): PontoDao
     abstract fun empregoDao(): EmpregoDao

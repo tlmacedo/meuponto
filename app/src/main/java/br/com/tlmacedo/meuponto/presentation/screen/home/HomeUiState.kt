@@ -7,6 +7,7 @@ import br.com.tlmacedo.meuponto.domain.model.Ponto
 import br.com.tlmacedo.meuponto.domain.model.ResumoDia
 import br.com.tlmacedo.meuponto.domain.model.TipoPonto
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -152,4 +153,59 @@ data class HomeUiState(
      */
     val podeNavegarProximo: Boolean
         get() = dataSelecionada.isBefore(LocalDate.now().plusMonths(1))
+
+    // ══════════════════════════════════════════════════════════════════════
+    // PROPRIEDADES DO CONTADOR EM TEMPO REAL
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Verifica se há um intervalo aberto (entrada sem saída).
+     * O contador só deve ser exibido se for hoje e houver intervalo aberto.
+     */
+    val temIntervaloAberto: Boolean
+        get() = isHoje && resumoDia.intervalos.any { it.aberto }
+
+    /**
+     * Obtém o intervalo aberto atual (se houver).
+     */
+    val intervaloAberto: br.com.tlmacedo.meuponto.domain.model.IntervaloPonto?
+        get() = if (isHoje) resumoDia.intervalos.find { it.aberto } else null
+
+    /**
+     * Data e hora de início do intervalo aberto (para o contador).
+     * Retorna null se não houver intervalo aberto.
+     */
+    val dataHoraInicioContador: LocalDateTime?
+        get() = intervaloAberto?.entrada?.dataHora
+
+    /**
+     * Verifica se o contador em tempo real deve ser exibido.
+     * Condições: é hoje, tem intervalo aberto e tem data/hora válida.
+     */
+    val deveExibirContador: Boolean
+        get() = isHoje && temIntervaloAberto && dataHoraInicioContador != null
+
+    /**
+     * Verifica se a jornada está em andamento.
+     * Útil para determinar estados visuais da UI.
+     */
+    val jornadaEmAndamento: Boolean
+        get() = temPontos && !resumoDia.jornadaCompleta && isHoje
+
+    /**
+     * Obtém o último ponto registrado (se houver).
+     */
+    val ultimoPonto: Ponto?
+        get() = pontosHoje.maxByOrNull { it.dataHora }
+
+    /**
+     * Texto de status da jornada para exibição.
+     */
+    val statusJornada: String
+        get() = when {
+            !temPontos -> "Aguardando entrada"
+            jornadaEmAndamento -> "Jornada em andamento"
+            resumoDia.jornadaCompleta -> "Jornada finalizada"
+            else -> "Status indefinido"
+        }
 }

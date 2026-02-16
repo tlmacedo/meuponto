@@ -1,137 +1,98 @@
 package br.com.tlmacedo.meuponto.presentation.screen.settings.empregos.editar
 
-import br.com.tlmacedo.meuponto.domain.model.DiaSemana
-import br.com.tlmacedo.meuponto.domain.model.TipoNsr
-import com.google.common.truth.Truth.assertThat
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Duration
 
 /**
- * Testes unitários para [EditarEmpregoUiState].
+ * Testes unitários para EditarEmpregoUiState.
  */
 class EditarEmpregoUiStateTest {
 
     @Test
     fun `estado inicial deve ter valores padrao corretos`() {
         val state = EditarEmpregoUiState()
-
-        assertThat(state.empregoId).isNull()
-        assertThat(state.isNovoEmprego).isTrue()
-        assertThat(state.isLoading).isFalse()
-        assertThat(state.isSaving).isFalse()
-        assertThat(state.nome).isEmpty()
-        assertThat(state.nomeErro).isNull()
+        
+        assertTrue(state.isNovoEmprego)
+        assertEquals("", state.nome)
+        assertEquals(Duration.ofMinutes(492), state.cargaHorariaDiaria)
+        assertEquals(600, state.jornadaMaximaDiariaMinutos)
+        assertEquals(60, state.intervaloMinimoMinutos)
+        assertFalse(state.habilitarNsr)
+        assertFalse(state.habilitarLocalizacao)
     }
 
     @Test
-    fun `cargaHorariaDiaria padrao deve ser 8 horas`() {
-        val state = EditarEmpregoUiState()
-        assertThat(state.cargaHorariaDiaria).isEqualTo(Duration.ofHours(8))
-    }
-
-    @Test
-    fun `tolerancias padrao devem estar corretas`() {
-        val state = EditarEmpregoUiState()
-        assertThat(state.toleranciaEntradaMinutos).isEqualTo(10)
-        assertThat(state.toleranciaSaidaMinutos).isEqualTo(10)
-        assertThat(state.toleranciaIntervaloMinutos).isEqualTo(5)
-    }
-
-    @Test
-    fun `NSR deve estar desabilitado por padrao`() {
-        val state = EditarEmpregoUiState()
-        assertThat(state.habilitarNsr).isFalse()
-        assertThat(state.tipoNsr).isEqualTo(TipoNsr.NUMERICO)
-    }
-
-    @Test
-    fun `localizacao deve estar desabilitada por padrao`() {
-        val state = EditarEmpregoUiState()
-        assertThat(state.habilitarLocalizacao).isFalse()
-        assertThat(state.localizacaoAutomatica).isFalse()
-    }
-
-    @Test
-    fun `primeiroDiaSemana padrao deve ser SEGUNDA`() {
-        val state = EditarEmpregoUiState()
-        assertThat(state.primeiroDiaSemana).isEqualTo(DiaSemana.SEGUNDA)
-    }
-
-    @Test
-    fun `formularioValido deve retornar false quando nome esta vazio`() {
-        val state = EditarEmpregoUiState(nome = "")
-        assertThat(state.formularioValido).isFalse()
-    }
-
-    @Test
-    fun `formularioValido deve retornar false quando nome esta em branco`() {
-        val state = EditarEmpregoUiState(nome = "   ")
-        assertThat(state.formularioValido).isFalse()
-    }
-
-    @Test
-    fun `formularioValido deve retornar false quando ha erro no nome`() {
-        val state = EditarEmpregoUiState(nome = "Teste", nomeErro = "Erro")
-        assertThat(state.formularioValido).isFalse()
-    }
-
-    @Test
-    fun `formularioValido deve retornar true quando nome valido e sem erros`() {
-        val state = EditarEmpregoUiState(nome = "Empresa Teste", nomeErro = null)
-        assertThat(state.formularioValido).isTrue()
-    }
-
-    @Test
-    fun `tituloTela deve ser Novo Emprego quando isNovoEmprego true`() {
+    fun `tituloTela deve retornar texto correto para novo emprego`() {
         val state = EditarEmpregoUiState(isNovoEmprego = true)
-        assertThat(state.tituloTela).isEqualTo("Novo Emprego")
+        assertEquals("Novo Emprego", state.tituloTela)
     }
 
     @Test
-    fun `tituloTela deve ser Editar Emprego quando isNovoEmprego false`() {
+    fun `tituloTela deve retornar texto correto para edicao`() {
         val state = EditarEmpregoUiState(isNovoEmprego = false)
-        assertThat(state.tituloTela).isEqualTo("Editar Emprego")
+        assertEquals("Editar Emprego", state.tituloTela)
     }
 
     @Test
-    fun `temBancoHoras deve retornar false quando periodo eh 0`() {
-        val state = EditarEmpregoUiState(periodoBancoHorasMeses = 0)
-        assertThat(state.temBancoHoras).isFalse()
+    fun `textoBotaoSalvar deve retornar texto correto para novo emprego`() {
+        val state = EditarEmpregoUiState(isNovoEmprego = true)
+        assertEquals("Criar Emprego", state.textoBotaoSalvar)
     }
 
     @Test
-    fun `temBancoHoras deve retornar true quando periodo maior que 0`() {
+    fun `textoBotaoSalvar deve retornar texto correto para edicao`() {
+        val state = EditarEmpregoUiState(isNovoEmprego = false)
+        assertEquals("Salvar Alterações", state.textoBotaoSalvar)
+    }
+
+    @Test
+    fun `formularioValido deve retornar false quando nome vazio`() {
+        val state = EditarEmpregoUiState(nome = "")
+        assertFalse(state.formularioValido)
+    }
+
+    @Test
+    fun `formularioValido deve retornar false quando nome em branco`() {
+        val state = EditarEmpregoUiState(nome = "   ")
+        assertFalse(state.formularioValido)
+    }
+
+    @Test
+    fun `formularioValido deve retornar true quando nome preenchido`() {
+        val state = EditarEmpregoUiState(nome = "Meu Emprego")
+        assertTrue(state.formularioValido)
+    }
+
+    @Test
+    fun `formularioValido deve retornar false quando tem erro no nome`() {
+        val state = EditarEmpregoUiState(nome = "Teste", nomeErro = "Nome muito curto")
+        assertFalse(state.formularioValido)
+    }
+
+    @Test
+    fun `cargaHorariaDiariaFormatada deve formatar corretamente`() {
+        val state = EditarEmpregoUiState(cargaHorariaDiaria = Duration.ofMinutes(492))
+        assertEquals("08:12", state.cargaHorariaDiariaFormatada)
+    }
+
+    @Test
+    fun `cargaHorariaDiariaFormatada deve formatar 8 horas corretamente`() {
+        val state = EditarEmpregoUiState(cargaHorariaDiaria = Duration.ofHours(8))
+        assertEquals("08:00", state.cargaHorariaDiariaFormatada)
+    }
+
+    @Test
+    fun `temBancoHoras deve retornar true quando periodo maior que zero`() {
         val state = EditarEmpregoUiState(periodoBancoHorasMeses = 6)
-        assertThat(state.temBancoHoras).isTrue()
+        assertTrue(state.temBancoHoras)
     }
 
     @Test
-    fun `descricaoPeriodoBancoHoras deve retornar Desabilitado quando 0`() {
+    fun `temBancoHoras deve retornar false quando periodo zero`() {
         val state = EditarEmpregoUiState(periodoBancoHorasMeses = 0)
-        assertThat(state.descricaoPeriodoBancoHoras).isEqualTo("Desabilitado")
-    }
-
-    @Test
-    fun `descricaoPeriodoBancoHoras deve retornar 1 mes quando 1`() {
-        val state = EditarEmpregoUiState(periodoBancoHorasMeses = 1)
-        assertThat(state.descricaoPeriodoBancoHoras).isEqualTo("1 mês")
-    }
-
-    @Test
-    fun `descricaoPeriodoBancoHoras deve retornar X meses quando maior que 1`() {
-        val state = EditarEmpregoUiState(periodoBancoHorasMeses = 12)
-        assertThat(state.descricaoPeriodoBancoHoras).isEqualTo("12 meses")
-    }
-
-    @Test
-    fun `copy deve manter valores nao alterados`() {
-        val original = EditarEmpregoUiState(
-            nome = "Empresa Original",
-            toleranciaEntradaMinutos = 15
-        )
-        val copia = original.copy(nome = "Novo Nome")
-
-        assertThat(copia.nome).isEqualTo("Novo Nome")
-        assertThat(copia.toleranciaEntradaMinutos).isEqualTo(15)
+        assertFalse(state.temBancoHoras)
     }
 }

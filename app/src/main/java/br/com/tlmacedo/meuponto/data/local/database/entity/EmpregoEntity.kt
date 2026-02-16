@@ -4,25 +4,11 @@ package br.com.tlmacedo.meuponto.data.local.database.entity
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 /**
  * Entidade Room que representa um emprego/trabalho do usuário.
- * 
- * Cada emprego é um workspace independente com seus próprios registros de ponto,
- * configurações de horário e banco de horas.
- *
- * @property id Identificador único auto-gerado
- * @property nome Nome do emprego (ex: "Empresa ABC", "Freelance")
- * @property descricao Descrição opcional do emprego
- * @property ativo Indica se o emprego está ativo (visível na lista principal)
- * @property arquivado Indica se o emprego foi arquivado permanentemente (mantém dados)
- * @property ordem Ordem de exibição na lista de empregos
- * @property criadoEm Timestamp de criação
- * @property atualizadoEm Timestamp da última atualização
- *
- * @author Thiago
- * @since 2.0.0
  */
 @Entity(
     tableName = "empregos",
@@ -35,6 +21,7 @@ data class EmpregoEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val nome: String,
+    val dataInicioTrabalho: LocalDate? = null,
     val descricao: String? = null,
     val ativo: Boolean = true,
     val arquivado: Boolean = false,
@@ -43,19 +30,11 @@ data class EmpregoEntity(
     val atualizadoEm: LocalDateTime = LocalDateTime.now()
 )
 
-// ============================================================================
-// Funções de Mapeamento (Mapper Extensions)
-// ============================================================================
-
-/**
- * Converte EmpregoEntity (camada de dados) para Emprego (camada de domínio).
- *
- * @return Instância de [Emprego] com os dados mapeados
- */
 fun EmpregoEntity.toDomain(): br.com.tlmacedo.meuponto.domain.model.Emprego =
     br.com.tlmacedo.meuponto.domain.model.Emprego(
         id = id,
         nome = nome,
+        dataInicioTrabalho = dataInicioTrabalho,
         descricao = descricao,
         ativo = ativo,
         arquivado = arquivado,
@@ -64,15 +43,11 @@ fun EmpregoEntity.toDomain(): br.com.tlmacedo.meuponto.domain.model.Emprego =
         atualizadoEm = atualizadoEm
     )
 
-/**
- * Converte Emprego (camada de domínio) para EmpregoEntity (camada de dados).
- *
- * @return Instância de [EmpregoEntity] pronta para persistência
- */
 fun br.com.tlmacedo.meuponto.domain.model.Emprego.toEntity(): EmpregoEntity =
     EmpregoEntity(
         id = id,
         nome = nome,
+        dataInicioTrabalho = dataInicioTrabalho,
         descricao = descricao,
         ativo = ativo,
         arquivado = arquivado,

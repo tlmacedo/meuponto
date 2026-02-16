@@ -7,84 +7,97 @@ import java.time.LocalDateTime
 /**
  * Modelo de domínio que representa as configurações específicas de um emprego.
  *
- * Contém todas as configurações relacionadas a jornada de trabalho,
- * banco de horas, validações e preferências do emprego.
- *
- * @property id Identificador único da configuração
- * @property empregoId FK para o emprego associado
- * @property jornadaMaximaDiariaMinutos Jornada máxima diária em minutos (default: 600 = 10h)
- * @property intervaloMinimoInterjornadaMinutos Intervalo mínimo entre jornadas em minutos (default: 660 = 11h)
- * @property exigeJustificativaInconsistencia Se true, exige justificativa para registros inconsistentes
- * @property habilitarNsr Se true, habilita o campo NSR no registro de ponto
- * @property tipoNsr Tipo do campo NSR (NUMERICO ou ALFANUMERICO)
- * @property habilitarLocalizacao Se true, habilita captura de localização
- * @property localizacaoAutomatica Se true, captura localização automaticamente
- * @property exibirLocalizacaoDetalhes Se true, exibe localização nos detalhes do ponto
- * @property exibirDuracaoTurno Se true, exibe duração do turno na timeline
- * @property exibirDuracaoIntervalo Se true, exibe duração do intervalo na timeline
- * @property primeiroDiaSemana Primeiro dia da semana para cálculos
- * @property primeiroDiaMes Dia do mês que inicia o período (1-28)
- * @property zerarSaldoSemanal Se true, zera o saldo a cada semana
- * @property zerarSaldoMensal Se true, zera o saldo a cada mês
- * @property ocultarSaldoTotal Se true, oculta o saldo total na interface
- * @property periodoBancoHorasMeses Período do banco de horas em meses (0 = sem banco)
- * @property ultimoFechamentoBanco Data do último fechamento do banco de horas
- * @property diasUteisLembreteFechamento Dias úteis antes do fechamento para notificar
- * @property habilitarSugestaoAjuste Se true, sugere ajuste de horas antes do fechamento
- * @property criadoEm Timestamp de criação
- * @property atualizadoEm Timestamp da última atualização
- *
  * @author Thiago
  * @since 2.0.0
+ * @updated 2.3.2 - Adicionado zerarBancoAntesPeriodo e suporte a períodos flexíveis.
  */
 data class ConfiguracaoEmprego(
     val id: Long = 0,
     val empregoId: Long,
+
+    // JORNADA DE TRABALHO
+    val cargaHorariaDiariaMinutos: Int = 492,
     val jornadaMaximaDiariaMinutos: Int = 600,
     val intervaloMinimoInterjornadaMinutos: Int = 660,
+    val intervaloMinimoMinutos: Int = 60,
+
+    // TOLERÂNCIAS GLOBAIS
+    val toleranciaEntradaMinutos: Int = 10,
+    val toleranciaSaidaMinutos: Int = 10,
+    val toleranciaIntervaloMaisMinutos: Int = 0,
+
+    // VALIDAÇÕES
     val exigeJustificativaInconsistencia: Boolean = false,
+
+    // NSR
     val habilitarNsr: Boolean = false,
     val tipoNsr: TipoNsr = TipoNsr.NUMERICO,
+
+    // LOCALIZAÇÃO
     val habilitarLocalizacao: Boolean = false,
     val localizacaoAutomatica: Boolean = false,
     val exibirLocalizacaoDetalhes: Boolean = true,
+
+    // EXIBIÇÃO
     val exibirDuracaoTurno: Boolean = true,
     val exibirDuracaoIntervalo: Boolean = true,
+
+    // PERÍODO
     val primeiroDiaSemana: DiaSemana = DiaSemana.SEGUNDA,
     val primeiroDiaMes: Int = 1,
+
+    // SALDO
     val zerarSaldoSemanal: Boolean = false,
     val zerarSaldoMensal: Boolean = false,
     val ocultarSaldoTotal: Boolean = false,
+
+    // BANCO DE HORAS
+    /**
+     * Valor do período do banco de horas.
+     * Mapeamento: 0=Desativado, 1-3=Semanas, 4-15=Meses (valor-3)
+     */
     val periodoBancoHorasMeses: Int = 0,
     val ultimoFechamentoBanco: LocalDate? = null,
     val diasUteisLembreteFechamento: Int = 3,
     val habilitarSugestaoAjuste: Boolean = false,
+    val zerarBancoAntesPeriodo: Boolean = false,
+
+    // AUDITORIA
     val criadoEm: LocalDateTime = LocalDateTime.now(),
     val atualizadoEm: LocalDateTime = LocalDateTime.now()
 ) {
-    /**
-     * Verifica se o banco de horas está habilitado.
-     */
     val temBancoHoras: Boolean
         get() = periodoBancoHorasMeses > 0
 
-    /**
-     * Retorna a jornada máxima diária formatada (ex: "10:00").
-     */
+    val cargaHorariaDiariaFormatada: String
+        get() = formatarMinutosComoHoras(cargaHorariaDiariaMinutos)
+
     val jornadaMaximaDiariaFormatada: String
-        get() {
-            val horas = jornadaMaximaDiariaMinutos / 60
-            val minutos = jornadaMaximaDiariaMinutos % 60
-            return String.format("%02d:%02d", horas, minutos)
+        get() = formatarMinutosComoHoras(jornadaMaximaDiariaMinutos)
+
+    val intervaloMinimoInterjornadaFormatada: String
+        get() = formatarMinutosComoHoras(intervaloMinimoInterjornadaMinutos)
+
+    val intervaloMinimoFormatado: String
+        get() = formatarMinutosComoHoras(intervaloMinimoMinutos)
+
+    val temToleranciasConfiguradas: Boolean
+        get() = toleranciaEntradaMinutos > 0 ||
+                toleranciaSaidaMinutos > 0 ||
+                toleranciaIntervaloMaisMinutos > 0
+
+    val descricaoTolerancias: String
+        get() = buildString {
+            append("Entrada: ${toleranciaEntradaMinutos}min")
+            append(" | Saída: ${toleranciaSaidaMinutos}min")
+            if (toleranciaIntervaloMaisMinutos > 0) {
+                append(" | Intervalo: +${toleranciaIntervaloMaisMinutos}min")
+            }
         }
 
-    /**
-     * Retorna o intervalo mínimo interjornada formatado (ex: "11:00").
-     */
-    val intervaloMinimoInterjornadaFormatado: String
-        get() {
-            val horas = intervaloMinimoInterjornadaMinutos / 60
-            val minutos = intervaloMinimoInterjornadaMinutos % 60
-            return String.format("%02d:%02d", horas, minutos)
-        }
+    private fun formatarMinutosComoHoras(minutos: Int): String {
+        val horas = minutos / 60
+        val mins = minutos % 60
+        return String.format("%02d:%02d", horas, mins)
+    }
 }

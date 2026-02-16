@@ -52,6 +52,8 @@ import java.time.format.DateTimeFormatter
  * Exibe o resumo do dia, botão de registro de ponto,
  * navegação por data, seleção de emprego e lista de intervalos
  * trabalhados de forma visual e intuitiva.
+ * 
+ * Inclui contador em tempo real quando há jornada em andamento.
  *
  * @param viewModel ViewModel da tela
  * @param onNavigateToHistory Callback para navegar ao histórico
@@ -203,11 +205,13 @@ internal fun HomeContent(
             )
         }
 
-        // Card de Resumo
+        // Card de Resumo com contador em tempo real
         item {
             ResumoCard(
                 resumoDia = uiState.resumoDia,
-                bancoHoras = uiState.bancoHoras
+                bancoHoras = uiState.bancoHoras,
+                dataHoraInicioContador = uiState.dataHoraInicioContador,
+                mostrarContador = uiState.deveExibirContador
             )
         }
 
@@ -249,7 +253,7 @@ internal fun HomeContent(
                 )
             }
 
-            // Lista de intervalos
+            // Lista de intervalos com contador em tempo real para intervalos abertos
             items(
                 items = uiState.resumoDia.intervalos,
                 key = { it.entrada.id }
@@ -259,7 +263,10 @@ internal fun HomeContent(
                     enter = fadeIn() + slideInVertically(),
                     exit = fadeOut() + slideOutVertically()
                 ) {
-                    IntervaloCard(intervalo = intervalo)
+                    IntervaloCard(
+                        intervalo = intervalo,
+                        mostrarContadorTempoReal = uiState.isHoje
+                    )
                 }
             }
         } else if (uiState.temEmpregoAtivo && !uiState.isFuturo) {

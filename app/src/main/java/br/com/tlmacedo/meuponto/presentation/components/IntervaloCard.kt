@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -38,6 +37,7 @@ import br.com.tlmacedo.meuponto.presentation.theme.SaidaBg
 import br.com.tlmacedo.meuponto.presentation.theme.SaidaColor
 import br.com.tlmacedo.meuponto.presentation.theme.Success
 import br.com.tlmacedo.meuponto.presentation.theme.Warning
+import br.com.tlmacedo.meuponto.presentation.theme.WarningLight
 import java.time.format.DateTimeFormatter
 
 /**
@@ -45,8 +45,10 @@ import java.time.format.DateTimeFormatter
  *
  * Mostra visualmente o período trabalhado com entrada, saída
  * e duração do intervalo de forma clara e intuitiva.
+ * Quando o intervalo está aberto, exibe um contador em tempo real.
  *
  * @param intervalo Intervalo a ser exibido
+ * @param mostrarContadorTempoReal Se deve exibir contador em tempo real para intervalos abertos
  * @param modifier Modificador opcional
  *
  * @author Thiago
@@ -55,6 +57,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun IntervaloCard(
     intervalo: IntervaloPonto,
+    mostrarContadorTempoReal: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val formatadorHora = DateTimeFormatter.ofPattern("HH:mm")
@@ -92,7 +95,7 @@ fun IntervaloCard(
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Entrada",
                         style = MaterialTheme.typography.labelMedium,
@@ -102,6 +105,13 @@ fun IntervaloCard(
                         text = intervalo.entrada.hora.format(formatadorHora),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // Contador em tempo real para intervalos abertos
+                if (intervalo.aberto && mostrarContadorTempoReal) {
+                    LiveCounterCompact(
+                        dataHoraInicio = intervalo.entrada.dataHora
                     )
                 }
             }
@@ -121,19 +131,42 @@ fun IntervaloCard(
                         .background(MaterialTheme.colorScheme.outlineVariant)
                 )
                 Spacer(modifier = Modifier.width(16.dp))
-                Icon(
-                    imageVector = Icons.Default.Timer,
-                    contentDescription = null,
-                    tint = if (intervalo.aberto) Warning else Success,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = intervalo.formatarDuracao(),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = if (intervalo.aberto) Warning else Success
-                )
+
+                if (intervalo.aberto && mostrarContadorTempoReal) {
+                    // Para intervalo aberto, mostra "Em andamento" com indicador animado
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Timer,
+                            contentDescription = null,
+                            tint = Warning,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Em andamento",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = Warning
+                        )
+                    }
+                } else {
+                    // Para intervalo fechado ou sem contador, mostra duração estática
+                    Icon(
+                        imageVector = Icons.Default.Timer,
+                        contentDescription = null,
+                        tint = if (intervalo.aberto) Warning else Success,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = intervalo.formatarDuracao(),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = if (intervalo.aberto) Warning else Success
+                    )
+                }
             }
 
             // Linha de Saída
@@ -171,7 +204,7 @@ fun IntervaloCard(
                     }
                 }
             } else {
-                // Saída pendente
+                // Saída pendente com visual melhorado
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -181,7 +214,7 @@ fun IntervaloCard(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .background(WarningLight)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Schedule,
@@ -191,12 +224,19 @@ fun IntervaloCard(
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Aguardando saída...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Warning,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Column {
+                        Text(
+                            text = "Saída",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Warning
+                        )
+                        Text(
+                            text = "Aguardando...",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = Warning
+                        )
+                    }
                 }
             }
         }

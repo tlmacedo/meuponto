@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 2,
-    "identityHash": "375a0e1b79887a864a2a0e26527df6fb",
+    "version": 5,
+    "identityHash": "76d859f7b4e963d0938c097ec8f04ee6",
     "entities": [
       {
         "tableName": "pontos",
@@ -264,7 +264,7 @@
       },
       {
         "tableName": "configuracoes_emprego",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `empregoId` INTEGER NOT NULL, `cargaHorariaDiariaMinutos` INTEGER NOT NULL, `jornadaMaximaDiariaMinutos` INTEGER NOT NULL, `intervaloMinimoInterjornadaMinutos` INTEGER NOT NULL, `intervaloMinimoMinutos` INTEGER NOT NULL, `toleranciaEntradaMinutos` INTEGER NOT NULL, `toleranciaSaidaMinutos` INTEGER NOT NULL, `toleranciaIntervaloMaisMinutos` INTEGER NOT NULL, `toleranciaIntervaloMenosMinutos` INTEGER NOT NULL, `exigeJustificativaInconsistencia` INTEGER NOT NULL, `habilitarNsr` INTEGER NOT NULL, `tipoNsr` TEXT NOT NULL, `habilitarLocalizacao` INTEGER NOT NULL, `localizacaoAutomatica` INTEGER NOT NULL, `exibirLocalizacaoDetalhes` INTEGER NOT NULL, `exibirDuracaoTurno` INTEGER NOT NULL, `exibirDuracaoIntervalo` INTEGER NOT NULL, `primeiroDiaSemana` TEXT NOT NULL, `primeiroDiaMes` INTEGER NOT NULL, `zerarSaldoSemanal` INTEGER NOT NULL, `zerarSaldoMensal` INTEGER NOT NULL, `ocultarSaldoTotal` INTEGER NOT NULL, `periodoBancoHorasMeses` INTEGER NOT NULL, `ultimoFechamentoBanco` TEXT, `diasUteisLembreteFechamento` INTEGER NOT NULL, `habilitarSugestaoAjuste` INTEGER NOT NULL, `criadoEm` TEXT NOT NULL, `atualizadoEm` TEXT NOT NULL, FOREIGN KEY(`empregoId`) REFERENCES `empregos`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `empregoId` INTEGER NOT NULL, `cargaHorariaDiariaMinutos` INTEGER NOT NULL, `jornadaMaximaDiariaMinutos` INTEGER NOT NULL, `intervaloMinimoInterjornadaMinutos` INTEGER NOT NULL, `intervaloMinimoMinutos` INTEGER NOT NULL, `toleranciaEntradaMinutos` INTEGER NOT NULL, `toleranciaSaidaMinutos` INTEGER NOT NULL, `toleranciaIntervaloMaisMinutos` INTEGER NOT NULL, `exigeJustificativaInconsistencia` INTEGER NOT NULL, `habilitarNsr` INTEGER NOT NULL, `tipoNsr` TEXT NOT NULL, `habilitarLocalizacao` INTEGER NOT NULL, `localizacaoAutomatica` INTEGER NOT NULL, `exibirLocalizacaoDetalhes` INTEGER NOT NULL, `exibirDuracaoTurno` INTEGER NOT NULL, `exibirDuracaoIntervalo` INTEGER NOT NULL, `primeiroDiaSemana` TEXT NOT NULL, `primeiroDiaMes` INTEGER NOT NULL, `zerarSaldoSemanal` INTEGER NOT NULL, `zerarSaldoMensal` INTEGER NOT NULL, `ocultarSaldoTotal` INTEGER NOT NULL, `periodoBancoHorasMeses` INTEGER NOT NULL, `ultimoFechamentoBanco` TEXT, `diasUteisLembreteFechamento` INTEGER NOT NULL, `habilitarSugestaoAjuste` INTEGER NOT NULL, `criadoEm` TEXT NOT NULL, `atualizadoEm` TEXT NOT NULL, FOREIGN KEY(`empregoId`) REFERENCES `empregos`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -317,12 +317,6 @@
           {
             "fieldPath": "toleranciaIntervaloMaisMinutos",
             "columnName": "toleranciaIntervaloMaisMinutos",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "toleranciaIntervaloMenosMinutos",
-            "columnName": "toleranciaIntervaloMenosMinutos",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -474,7 +468,7 @@
       },
       {
         "tableName": "horarios_dia_semana",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `empregoId` INTEGER NOT NULL, `diaSemana` TEXT NOT NULL, `ativo` INTEGER NOT NULL, `cargaHorariaMinutos` INTEGER NOT NULL, `entradaIdeal` TEXT, `saidaIntervaloIdeal` TEXT, `voltaIntervaloIdeal` TEXT, `saidaIdeal` TEXT, `intervaloMinimoMinutos` INTEGER NOT NULL, `toleranciaIntervaloMaisMinutos` INTEGER NOT NULL, `toleranciaIntervaloMenosMinutos` INTEGER NOT NULL, `toleranciaEntradaMinutos` INTEGER, `toleranciaSaidaMinutos` INTEGER, `criadoEm` TEXT NOT NULL, `atualizadoEm` TEXT NOT NULL, FOREIGN KEY(`empregoId`) REFERENCES `empregos`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `empregoId` INTEGER NOT NULL, `diaSemana` TEXT NOT NULL, `ativo` INTEGER NOT NULL, `cargaHorariaMinutos` INTEGER NOT NULL, `entradaIdeal` TEXT, `saidaIntervaloIdeal` TEXT, `voltaIntervaloIdeal` TEXT, `saidaIdeal` TEXT, `intervaloMinimoMinutos` INTEGER NOT NULL, `toleranciaIntervaloMaisMinutos` INTEGER NOT NULL, `toleranciaEntradaMinutos` INTEGER, `toleranciaSaidaMinutos` INTEGER, `criadoEm` TEXT NOT NULL, `atualizadoEm` TEXT NOT NULL, FOREIGN KEY(`empregoId`) REFERENCES `empregos`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -539,12 +533,6 @@
           {
             "fieldPath": "toleranciaIntervaloMaisMinutos",
             "columnName": "toleranciaIntervaloMaisMinutos",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "toleranciaIntervaloMenosMinutos",
-            "columnName": "toleranciaIntervaloMenosMinutos",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -1004,7 +992,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '375a0e1b79887a864a2a0e26527df6fb')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '76d859f7b4e963d0938c097ec8f04ee6')"
     ]
   }
 }

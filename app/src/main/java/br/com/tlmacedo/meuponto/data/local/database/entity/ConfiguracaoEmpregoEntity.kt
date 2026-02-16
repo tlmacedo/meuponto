@@ -12,36 +12,6 @@ import java.time.LocalDateTime
 
 /**
  * Entidade Room que armazena as configurações específicas de cada emprego.
- * 
- * Contém todas as configurações relacionadas a jornada de trabalho,
- * banco de horas, validações e preferências do emprego.
- *
- * @property id Identificador único auto-gerado
- * @property empregoId FK para o emprego associado
- * @property jornadaMaximaDiariaMinutos Jornada máxima diária em minutos (default: 600 = 10h)
- * @property intervaloMinimoInterjornadaMinutos Intervalo mínimo entre jornadas em minutos (default: 660 = 11h)
- * @property exigeJustificativaInconsistencia Se true, exige justificativa para registros inconsistentes
- * @property habilitarNsr Se true, habilita o campo NSR no registro de ponto
- * @property tipoNsr Tipo do campo NSR (NUMERICO ou ALFANUMERICO)
- * @property habilitarLocalizacao Se true, habilita captura de localização
- * @property localizacaoAutomatica Se true, captura localização automaticamente
- * @property exibirLocalizacaoDetalhes Se true, exibe localização nos detalhes do ponto
- * @property exibirDuracaoTurno Se true, exibe duração do turno na timeline
- * @property exibirDuracaoIntervalo Se true, exibe duração do intervalo na timeline
- * @property primeiroDiaSemana Primeiro dia da semana para cálculos
- * @property primeiroDiaMes Dia do mês que inicia o período (1-28)
- * @property zerarSaldoSemanal Se true, zera o saldo a cada semana
- * @property zerarSaldoMensal Se true, zera o saldo a cada mês
- * @property ocultarSaldoTotal Se true, oculta o saldo total na interface
- * @property periodoBancoHorasMeses Período do banco de horas em meses (0 = sem banco)
- * @property ultimoFechamentoBanco Data do último fechamento do banco de horas
- * @property diasUteisLembreteFechamento Dias úteis antes do fechamento para notificar
- * @property habilitarSugestaoAjuste Se true, sugere ajuste de horas antes do fechamento
- * @property criadoEm Timestamp de criação
- * @property atualizadoEm Timestamp da última atualização
- *
- * @author Thiago
- * @since 2.0.0
  */
 @Entity(
     tableName = "configuracoes_emprego",
@@ -60,61 +30,65 @@ data class ConfiguracaoEmpregoEntity(
     val id: Long = 0,
     val empregoId: Long,
     
-    // Jornada de Trabalho
-    val jornadaMaximaDiariaMinutos: Int = 600, // 10 horas
-    val intervaloMinimoInterjornadaMinutos: Int = 660, // 11 horas
+    // JORNADA DE TRABALHO
+    val cargaHorariaDiariaMinutos: Int = 492,
+    val jornadaMaximaDiariaMinutos: Int = 600,
+    val intervaloMinimoInterjornadaMinutos: Int = 660,
+    val intervaloMinimoMinutos: Int = 60,
     
-    // Validações
+    // TOLERÂNCIAS GLOBAIS
+    val toleranciaEntradaMinutos: Int = 10,
+    val toleranciaSaidaMinutos: Int = 10,
+    val toleranciaIntervaloMaisMinutos: Int = 0,
+    
+    // VALIDAÇÕES
     val exigeJustificativaInconsistencia: Boolean = false,
     
     // NSR
     val habilitarNsr: Boolean = false,
     val tipoNsr: TipoNsr = TipoNsr.NUMERICO,
     
-    // Localização
+    // LOCALIZAÇÃO
     val habilitarLocalizacao: Boolean = false,
     val localizacaoAutomatica: Boolean = false,
     val exibirLocalizacaoDetalhes: Boolean = true,
     
-    // Exibição
+    // EXIBIÇÃO
     val exibirDuracaoTurno: Boolean = true,
     val exibirDuracaoIntervalo: Boolean = true,
     
-    // Período
+    // PERÍODO
     val primeiroDiaSemana: DiaSemana = DiaSemana.SEGUNDA,
-    val primeiroDiaMes: Int = 1, // Dia 1 a 28
+    val primeiroDiaMes: Int = 1,
     
-    // Saldo
+    // SALDO
     val zerarSaldoSemanal: Boolean = false,
     val zerarSaldoMensal: Boolean = false,
     val ocultarSaldoTotal: Boolean = false,
     
-    // Banco de Horas
-    val periodoBancoHorasMeses: Int = 0, // 0 = sem banco de horas
+    // BANCO DE HORAS
+    val periodoBancoHorasMeses: Int = 0,
     val ultimoFechamentoBanco: LocalDate? = null,
     val diasUteisLembreteFechamento: Int = 3,
     val habilitarSugestaoAjuste: Boolean = false,
+    val zerarBancoAntesPeriodo: Boolean = false,
     
-    // Auditoria
+    // AUDITORIA
     val criadoEm: LocalDateTime = LocalDateTime.now(),
     val atualizadoEm: LocalDateTime = LocalDateTime.now()
 )
 
-// ============================================================================
-// Funções de Mapeamento (Mapper Extensions)
-// ============================================================================
-
-/**
- * Converte ConfiguracaoEmpregoEntity (camada de dados) para ConfiguracaoEmprego (camada de domínio).
- *
- * @return Instância de [ConfiguracaoEmprego] com os dados mapeados
- */
 fun ConfiguracaoEmpregoEntity.toDomain(): br.com.tlmacedo.meuponto.domain.model.ConfiguracaoEmprego =
     br.com.tlmacedo.meuponto.domain.model.ConfiguracaoEmprego(
         id = id,
         empregoId = empregoId,
+        cargaHorariaDiariaMinutos = cargaHorariaDiariaMinutos,
         jornadaMaximaDiariaMinutos = jornadaMaximaDiariaMinutos,
         intervaloMinimoInterjornadaMinutos = intervaloMinimoInterjornadaMinutos,
+        intervaloMinimoMinutos = intervaloMinimoMinutos,
+        toleranciaEntradaMinutos = toleranciaEntradaMinutos,
+        toleranciaSaidaMinutos = toleranciaSaidaMinutos,
+        toleranciaIntervaloMaisMinutos = toleranciaIntervaloMaisMinutos,
         exigeJustificativaInconsistencia = exigeJustificativaInconsistencia,
         habilitarNsr = habilitarNsr,
         tipoNsr = tipoNsr,
@@ -132,21 +106,22 @@ fun ConfiguracaoEmpregoEntity.toDomain(): br.com.tlmacedo.meuponto.domain.model.
         ultimoFechamentoBanco = ultimoFechamentoBanco,
         diasUteisLembreteFechamento = diasUteisLembreteFechamento,
         habilitarSugestaoAjuste = habilitarSugestaoAjuste,
+        zerarBancoAntesPeriodo = zerarBancoAntesPeriodo,
         criadoEm = criadoEm,
         atualizadoEm = atualizadoEm
     )
 
-/**
- * Converte ConfiguracaoEmprego (camada de domínio) para ConfiguracaoEmpregoEntity (camada de dados).
- *
- * @return Instância de [ConfiguracaoEmpregoEntity] pronta para persistência
- */
 fun br.com.tlmacedo.meuponto.domain.model.ConfiguracaoEmprego.toEntity(): ConfiguracaoEmpregoEntity =
     ConfiguracaoEmpregoEntity(
         id = id,
         empregoId = empregoId,
+        cargaHorariaDiariaMinutos = cargaHorariaDiariaMinutos,
         jornadaMaximaDiariaMinutos = jornadaMaximaDiariaMinutos,
         intervaloMinimoInterjornadaMinutos = intervaloMinimoInterjornadaMinutos,
+        intervaloMinimoMinutos = intervaloMinimoMinutos,
+        toleranciaEntradaMinutos = toleranciaEntradaMinutos,
+        toleranciaSaidaMinutos = toleranciaSaidaMinutos,
+        toleranciaIntervaloMaisMinutos = toleranciaIntervaloMaisMinutos,
         exigeJustificativaInconsistencia = exigeJustificativaInconsistencia,
         habilitarNsr = habilitarNsr,
         tipoNsr = tipoNsr,
@@ -164,7 +139,7 @@ fun br.com.tlmacedo.meuponto.domain.model.ConfiguracaoEmprego.toEntity(): Config
         ultimoFechamentoBanco = ultimoFechamentoBanco,
         diasUteisLembreteFechamento = diasUteisLembreteFechamento,
         habilitarSugestaoAjuste = habilitarSugestaoAjuste,
+        zerarBancoAntesPeriodo = zerarBancoAntesPeriodo,
         criadoEm = criadoEm,
         atualizadoEm = atualizadoEm
     )
-

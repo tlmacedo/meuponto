@@ -4,6 +4,7 @@ package br.com.tlmacedo.meuponto.presentation.screen.settings.empregos.editar
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,20 +20,25 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -48,6 +54,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -68,19 +76,12 @@ import br.com.tlmacedo.meuponto.domain.model.TipoNsr
 import br.com.tlmacedo.meuponto.presentation.components.MeuPontoTopBar
 import kotlinx.coroutines.flow.collectLatest
 import java.time.Duration
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * Tela de edição/criação de emprego.
- *
- * Formulário completo para configurar um emprego com suas
- * configurações de jornada, tolerâncias, NSR e banco de horas.
- *
- * @param onNavigateBack Callback para voltar à tela anterior
- * @param modifier Modificador opcional
- * @param viewModel ViewModel da tela
- *
- * @author Thiago
- * @since 2.0.0
  */
 @Composable
 fun EditarEmpregoScreen(
@@ -91,7 +92,6 @@ fun EditarEmpregoScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Coleta eventos do ViewModel
     LaunchedEffect(Unit) {
         viewModel.eventos.collectLatest { evento ->
             when (evento) {
@@ -121,7 +121,6 @@ fun EditarEmpregoScreen(
         modifier = modifier
     ) { paddingValues ->
         if (uiState.isLoading) {
-            // Estado de carregamento
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -134,27 +133,74 @@ fun EditarEmpregoScreen(
             EditarEmpregoContent(
                 uiState = uiState,
                 onAction = viewModel::onAction,
+                onSetShowInicioTrabalhoPicker = viewModel::setShowInicioTrabalhoPicker,
+                onSetShowUltimoFechamentoPicker = viewModel::setShowUltimoFechamentoPicker,
                 modifier = Modifier.padding(paddingValues)
             )
         }
     }
 }
 
-/**
- * Conteúdo do formulário de edição de emprego.
- */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditarEmpregoContent(
     uiState: EditarEmpregoUiState,
     onAction: (EditarEmpregoAction) -> Unit,
+    onSetShowInicioTrabalhoPicker: (Boolean) -> Unit,
+    onSetShowUltimoFechamentoPicker: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // DATE PICKER DIALOGS
+    if (uiState.showInicioTrabalhoPicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = uiState.dataInicioTrabalho?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { onSetShowInicioTrabalhoPicker(false) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val date = datePickerState.selectedDateMillis?.let {
+                        Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
+                    }
+                    onAction(EditarEmpregoAction.AlterarDataInicioTrabalho(date))
+                }) { Text("Confirmar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { onSetShowInicioTrabalhoPicker(false) }) { Text("Cancelar") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (uiState.showUltimoFechamentoPicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = uiState.ultimoFechamentoBanco?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { onSetShowUltimoFechamentoPicker(false) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val date = datePickerState.selectedDateMillis?.let {
+                        Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
+                    }
+                    onAction(EditarEmpregoAction.AlterarUltimoFechamentoBanco(date))
+                }) { Text("Confirmar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { onSetShowUltimoFechamentoPicker(false) }) { Text("Cancelar") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier.fillMaxSize()
     ) {
-        // Seção: Dados Básicos
+        // DADOS BÁSICOS
         item {
             FormSection(
                 title = "Dados Básicos",
@@ -172,14 +218,32 @@ private fun EditarEmpregoContent(
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Words,
-                        imeAction = ImeAction.Done
+                        imeAction = ImeAction.Next
                     ),
                     modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // DATA DE INÍCIO NO TRABALHO
+                OutlinedTextField(
+                    value = uiState.dataInicioTrabalhoFormatada,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Data de início no trabalho") },
+                    trailingIcon = {
+                        IconButton(onClick = { onSetShowInicioTrabalhoPicker(true) }) {
+                            Icon(Icons.Default.CalendarMonth, contentDescription = "Selecionar data")
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSetShowInicioTrabalhoPicker(true) }
                 )
             }
         }
 
-        // Seção: Jornada de Trabalho
+        // JORNADA DE TRABALHO
         item {
             FormSection(
                 title = "Jornada de Trabalho",
@@ -187,61 +251,51 @@ private fun EditarEmpregoContent(
                 isExpanded = uiState.secaoExpandida == SecaoFormulario.JORNADA,
                 onToggle = { onAction(EditarEmpregoAction.ToggleSecao(SecaoFormulario.JORNADA)) }
             ) {
-                // Carga horária diária
-                DurationSlider(
+                MinutesSliderWithSteppers(
                     label = "Carga Horária Diária",
-                    value = uiState.cargaHorariaDiaria,
-                    onValueChange = { onAction(EditarEmpregoAction.AlterarCargaHorariaDiaria(it)) },
-                    minHours = 1,
-                    maxHours = 12,
-                    stepMinutes = 30
+                    value = uiState.cargaHorariaDiaria.toMinutes().toInt(),
+                    onValueChange = { onAction(EditarEmpregoAction.AlterarCargaHorariaDiaria(Duration.ofMinutes(it.toLong()))) },
+                    valueRange = 0..720,
+                    sliderStep = 30,
+                    formatAsHours = true
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Jornada máxima diária
-                MinutesSlider(
+                MinutesSliderWithSteppers(
                     label = "Jornada Máxima Diária",
                     value = uiState.jornadaMaximaDiariaMinutos,
                     onValueChange = { onAction(EditarEmpregoAction.AlterarJornadaMaximaDiaria(it)) },
-                    minMinutes = 60,
-                    maxMinutes = 720,
-                    step = 30,
-                    formatAsHours = true,
-                    helperText = "Limite CLT: 10 horas"
+                    valueRange = 0..720,
+                    sliderStep = 30,
+                    formatAsHours = true
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Intervalo mínimo obrigatório
-                MinutesSlider(
+                MinutesSliderWithSteppers(
                     label = "Intervalo Mínimo",
                     value = uiState.intervaloMinimoMinutos,
                     onValueChange = { onAction(EditarEmpregoAction.AlterarIntervaloMinimo(it)) },
-                    minMinutes = 0,
-                    maxMinutes = 120,
-                    step = 15,
-                    formatAsHours = false,
-                    helperText = "Mínimo CLT: 1 hora para jornadas > 6h"
+                    valueRange = 0..120,
+                    sliderStep = 15,
+                    formatAsHours = false
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Intervalo interjornada
-                MinutesSlider(
+                MinutesSliderWithSteppers(
                     label = "Intervalo Entre Jornadas",
                     value = uiState.intervaloInterjornadaMinutos,
                     onValueChange = { onAction(EditarEmpregoAction.AlterarIntervaloInterjornada(it)) },
-                    minMinutes = 0,
-                    maxMinutes = 720,
-                    step = 30,
-                    formatAsHours = true,
-                    helperText = "Mínimo CLT: 11 horas"
+                    valueRange = 0..2880,
+                    sliderStep = 60,
+                    formatAsHours = true
                 )
             }
         }
 
-        // Seção: Tolerâncias
+        // TOLERÂNCIAS
         item {
             FormSection(
                 title = "Tolerâncias",
@@ -249,49 +303,18 @@ private fun EditarEmpregoContent(
                 isExpanded = uiState.secaoExpandida == SecaoFormulario.TOLERANCIAS,
                 onToggle = { onAction(EditarEmpregoAction.ToggleSecao(SecaoFormulario.TOLERANCIAS)) }
             ) {
-                // Tolerância de entrada
-                MinutesSlider(
-                    label = "Tolerância de Entrada",
-                    value = uiState.toleranciaEntradaMinutos,
-                    onValueChange = { onAction(EditarEmpregoAction.AlterarToleranciaEntrada(it)) },
-                    minMinutes = 0,
-                    maxMinutes = 30,
-                    step = 5,
-                    formatAsHours = false,
-                    helperText = "Margem para atrasos na entrada"
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Tolerância de saída
-                MinutesSlider(
-                    label = "Tolerância de Saída",
-                    value = uiState.toleranciaSaidaMinutos,
-                    onValueChange = { onAction(EditarEmpregoAction.AlterarToleranciaSaida(it)) },
-                    minMinutes = 0,
-                    maxMinutes = 30,
-                    step = 5,
-                    formatAsHours = false,
-                    helperText = "Margem para saídas antecipadas"
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Tolerância de intervalo
-                MinutesSlider(
-                    label = "Tolerância de Intervalo",
-                    value = uiState.toleranciaIntervaloMinutos,
-                    onValueChange = { onAction(EditarEmpregoAction.AlterarToleranciaIntervalo(it)) },
-                    minMinutes = 0,
-                    maxMinutes = 15,
-                    step = 1,
-                    formatAsHours = false,
-                    helperText = "Margem para retorno do intervalo"
+                MinutesSliderWithSteppers(
+                    label = "Tolerância Intervalo (+)",
+                    value = uiState.toleranciaIntervaloMaisMinutos,
+                    onValueChange = { onAction(EditarEmpregoAction.AlterarToleranciaIntervaloMais(it)) },
+                    valueRange = 0..60,
+                    sliderStep = 1,
+                    formatAsHours = false
                 )
             }
         }
 
-        // Seção: NSR e Localização
+        // NSR E LOCALIZAÇÃO
         item {
             FormSection(
                 title = "NSR e Localização",
@@ -299,7 +322,6 @@ private fun EditarEmpregoContent(
                 isExpanded = uiState.secaoExpandida == SecaoFormulario.NSR_LOCALIZACAO,
                 onToggle = { onAction(EditarEmpregoAction.ToggleSecao(SecaoFormulario.NSR_LOCALIZACAO)) }
             ) {
-                // NSR
                 SwitchOption(
                     title = "Habilitar NSR",
                     description = "Número Sequencial de Registro",
@@ -319,7 +341,6 @@ private fun EditarEmpregoContent(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
-                // Localização
                 SwitchOption(
                     title = "Habilitar Localização",
                     description = "Capturar localização ao registrar ponto",
@@ -341,7 +362,7 @@ private fun EditarEmpregoContent(
             }
         }
 
-        // Seção: Banco de Horas
+        // BANCO DE HORAS
         item {
             FormSection(
                 title = "Banco de Horas",
@@ -349,26 +370,44 @@ private fun EditarEmpregoContent(
                 isExpanded = uiState.secaoExpandida == SecaoFormulario.BANCO_HORAS,
                 onToggle = { onAction(EditarEmpregoAction.ToggleSecao(SecaoFormulario.BANCO_HORAS)) }
             ) {
-                // Período do banco de horas
-                MinutesSlider(
+                MinutesSliderWithSteppers(
                     label = "Período do Banco",
-                    value = uiState.periodoBancoHorasMeses,
+                    value = uiState.periodoBancoHorasValor,
                     onValueChange = { onAction(EditarEmpregoAction.AlterarPeriodoBancoHoras(it)) },
-                    minMinutes = 0,
-                    maxMinutes = 12,
-                    step = 1,
+                    valueRange = 0..15,
+                    sliderStep = 1,
                     formatAsHours = false,
-                    suffix = if (uiState.periodoBancoHorasMeses == 0) "Desabilitado" 
-                             else if (uiState.periodoBancoHorasMeses == 1) "mês" 
-                             else "meses",
-                    helperText = "Período para fechamento do banco"
+                    displayFormatter = { valState -> 
+                        when (valState) {
+                            0 -> "Desabilitado"
+                            1 -> "1 semana"
+                            2 -> "2 semanas"
+                            3 -> "3 semanas"
+                            else -> "${valState - 3} mês(es)"
+                        }
+                    }
                 )
 
                 AnimatedVisibility(visible = uiState.temBancoHoras) {
                     Column {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Checkbox(
+                                checked = uiState.zerarBancoAntesPeriodo,
+                                onCheckedChange = { onAction(EditarEmpregoAction.AlterarZerarBancoAntesPeriodo(it)) }
+                            )
+                            Text(
+                                text = "Zerar banco de horas antes do período",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Primeiro dia da semana
                         DiaSemanaSelector(
                             label = "Primeiro Dia da Semana",
                             selected = uiState.primeiroDiaSemana,
@@ -377,33 +416,51 @@ private fun EditarEmpregoContent(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Primeiro dia do mês
-                        MinutesSlider(
-                            label = "Dia de Fechamento",
+                        MinutesSliderWithSteppers(
+                            label = "Dia de Fechamento (RH)",
                             value = uiState.primeiroDiaMes,
                             onValueChange = { onAction(EditarEmpregoAction.AlterarPrimeiroDiaMes(it)) },
-                            minMinutes = 1,
-                            maxMinutes = 28,
-                            step = 1,
+                            valueRange = 1..30,
+                            sliderStep = 1,
                             formatAsHours = false,
-                            suffix = "",
-                            helperText = "Dia do mês para fechamento"
+                            suffix = ""
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
 
                         SwitchOption(
-                            title = "Zerar Saldo Mensalmente",
-                            description = "Reiniciar saldo a cada fechamento",
+                            title = uiState.labelZerarSaldoDinamico,
+                            description = "Reiniciar saldo a cada fechamento de período",
                             checked = uiState.zerarSaldoMensal,
                             onCheckedChange = { onAction(EditarEmpregoAction.AlterarZerarSaldoMensal(it)) }
                         )
+
+                        // DATA DO ÚLTIMO FECHAMENTO (Só exibe se Zerar Saldo estiver ativado)
+                        AnimatedVisibility(visible = uiState.zerarSaldoMensal) {
+                            Column {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                OutlinedTextField(
+                                    value = uiState.ultimoFechamentoBancoFormatado,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("Última data de fechamento do banco") },
+                                    trailingIcon = {
+                                        IconButton(onClick = { onSetShowUltimoFechamentoPicker(true) }) {
+                                            Icon(Icons.Default.CalendarMonth, contentDescription = "Selecionar data")
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onSetShowUltimoFechamentoPicker(true) }
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // Seção: Configurações Avançadas
+        // AVANÇADO
         item {
             FormSection(
                 title = "Avançado",
@@ -413,14 +470,14 @@ private fun EditarEmpregoContent(
             ) {
                 SwitchOption(
                     title = "Exigir Justificativa",
-                    description = "Exigir justificativa para registros inconsistentes",
+                    description = "Exigir justificativa para registros fora da tolerância",
                     checked = uiState.exigeJustificativaInconsistencia,
                     onCheckedChange = { onAction(EditarEmpregoAction.AlterarExigeJustificativa(it)) }
                 )
             }
         }
 
-        // Botão Salvar
+        // SALVAR
         item {
             Spacer(modifier = Modifier.height(8.dp))
             Button(
@@ -448,13 +505,86 @@ private fun EditarEmpregoContent(
     }
 }
 
-// ══════════════════════════════════════════════════════════════════════
-// COMPONENTES DO FORMULÁRIO
-// ══════════════════════════════════════════════════════════════════════
+@Composable
+private fun MinutesSliderWithSteppers(
+    label: String,
+    value: Int,
+    onValueChange: (Int) -> Unit,
+    valueRange: IntRange,
+    sliderStep: Int,
+    formatAsHours: Boolean,
+    suffix: String = "min",
+    helperText: String? = null,
+    displayFormatter: ((Int) -> String)? = null
+) {
+    val displayValue = when {
+        displayFormatter != null -> displayFormatter(value)
+        formatAsHours -> {
+            val h = value / 60
+            val m = value % 60
+            String.format("%02d:%02d", h, m)
+        }
+        else -> if (suffix.isEmpty()) "$value" else "$value $suffix"
+    }
 
-/**
- * Seção expansível do formulário.
- */
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = displayValue,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            IconButton(
+                onClick = { onValueChange((value - 1).coerceIn(valueRange)) },
+                enabled = value > valueRange.first
+            ) {
+                Icon(Icons.Default.Remove, contentDescription = "Diminuir 1 unidade")
+            }
+            Slider(
+                value = value.toFloat(),
+                onValueChange = { onValueChange(it.toInt()) },
+                valueRange = valueRange.first.toFloat()..valueRange.last.toFloat(),
+                steps = if (sliderStep > 0 && (valueRange.last - valueRange.first) > sliderStep) 
+                            ((valueRange.last - valueRange.first) / sliderStep) - 1 
+                        else 0,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(
+                onClick = { onValueChange((value + 1).coerceIn(valueRange)) },
+                enabled = value < valueRange.last
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Aumentar 1 unidade")
+            }
+        }
+
+        helperText?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
+    }
+}
+
 @Composable
 private fun FormSection(
     title: String,
@@ -470,7 +600,6 @@ private fun FormSection(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column {
-            // Header clicável
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -497,7 +626,6 @@ private fun FormSection(
                 }
             }
 
-            // Conteúdo expansível
             AnimatedVisibility(
                 visible = isExpanded,
                 enter = expandVertically(),
@@ -518,105 +646,6 @@ private fun FormSection(
     }
 }
 
-/**
- * Slider para seleção de duração (Duration).
- */
-@Composable
-private fun DurationSlider(
-    label: String,
-    value: Duration,
-    onValueChange: (Duration) -> Unit,
-    minHours: Int,
-    maxHours: Int,
-    stepMinutes: Int
-) {
-    val totalMinutes = value.toMinutes().toInt()
-    val hours = totalMinutes / 60
-    val minutes = totalMinutes % 60
-
-    Column {
-        Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                text = String.format("%02d:%02d", hours, minutes),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-        Slider(
-            value = totalMinutes.toFloat(),
-            onValueChange = { onValueChange(Duration.ofMinutes(it.toLong())) },
-            valueRange = (minHours * 60f)..(maxHours * 60f),
-            steps = ((maxHours - minHours) * 60 / stepMinutes) - 1
-        )
-    }
-}
-
-/**
- * Slider para seleção de minutos.
- */
-@Composable
-private fun MinutesSlider(
-    label: String,
-    value: Int,
-    onValueChange: (Int) -> Unit,
-    minMinutes: Int,
-    maxMinutes: Int,
-    step: Int,
-    formatAsHours: Boolean,
-    suffix: String = "min",
-    helperText: String? = null
-) {
-    val displayValue = if (formatAsHours) {
-        val h = value / 60
-        val m = value % 60
-        if (m == 0) "${h}h" else "${h}h${m}min"
-    } else {
-        if (suffix.isEmpty()) "$value" else "$value $suffix"
-    }
-
-    Column {
-        Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                text = displayValue,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-        Slider(
-            value = value.toFloat(),
-            onValueChange = { onValueChange(it.toInt()) },
-            valueRange = minMinutes.toFloat()..maxMinutes.toFloat(),
-            steps = if (step > 0) ((maxMinutes - minMinutes) / step) - 1 else 0
-        )
-        helperText?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-/**
- * Switch com título e descrição.
- */
 @Composable
 private fun SwitchOption(
     title: String,
@@ -646,9 +675,6 @@ private fun SwitchOption(
     }
 }
 
-/**
- * Seletor de tipo de NSR.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TipoNsrSelector(
@@ -697,9 +723,6 @@ private fun TipoNsrSelector(
     }
 }
 
-/**
- * Seletor de dia da semana.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DiaSemanaSelector(

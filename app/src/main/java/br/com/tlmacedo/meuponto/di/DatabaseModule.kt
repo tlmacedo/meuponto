@@ -6,15 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import br.com.tlmacedo.meuponto.data.local.database.MeuPontoDatabase
-import br.com.tlmacedo.meuponto.data.local.database.dao.AjusteSaldoDao
-import br.com.tlmacedo.meuponto.data.local.database.dao.AuditLogDao
-import br.com.tlmacedo.meuponto.data.local.database.dao.ConfiguracaoEmpregoDao
-import br.com.tlmacedo.meuponto.data.local.database.dao.EmpregoDao
-import br.com.tlmacedo.meuponto.data.local.database.dao.FechamentoPeriodoDao
-import br.com.tlmacedo.meuponto.data.local.database.dao.HorarioDiaSemanaDao
-import br.com.tlmacedo.meuponto.data.local.database.dao.MarcadorDao
-import br.com.tlmacedo.meuponto.data.local.database.dao.PontoDao
-import br.com.tlmacedo.meuponto.data.local.database.migration.MIGRATION_1_2
+import br.com.tlmacedo.meuponto.data.local.database.dao.*
+import br.com.tlmacedo.meuponto.data.local.database.migration.*
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,31 +18,11 @@ import javax.inject.Singleton
 
 /**
  * Módulo Hilt para injeção de dependências relacionadas ao banco de dados.
- *
- * Fornece instâncias singleton do banco de dados Room e seus DAOs.
- * Inclui callback para inserir dados iniciais em instalações novas.
- *
- * @author Thiago
- * @since 1.0.0
- * @updated 2.0.0 - Adicionado suporte a migrations, novos DAOs e callback de inicialização
  */
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
-    // ========================================================================
-    // Database
-    // ========================================================================
-
-    /**
-     * Fornece instância singleton do banco de dados Room.
-     *
-     * Configura migrations e callback para inserir dados iniciais
-     * quando o banco é criado pela primeira vez (instalação nova).
-     *
-     * @param context Contexto da aplicação
-     * @return Instância do MeuPontoDatabase
-     */
     @Provides
     @Singleton
     fun provideMeuPontoDatabase(
@@ -60,23 +33,11 @@ object DatabaseModule {
             MeuPontoDatabase::class.java,
             MeuPontoDatabase.DATABASE_NAME
         )
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .addCallback(createDatabaseCallback())
             .build()
     }
 
-    /**
-     * Cria callback para inicialização do banco de dados.
-     *
-     * O callback onCreate é executado apenas quando o banco é criado
-     * pela primeira vez (instalação nova), inserindo o emprego padrão
-     * e sua configuração inicial.
-     *
-     * Nota: Em upgrades (versão 1 → 2), a migration é responsável
-     * por inserir esses dados.
-     *
-     * @return RoomDatabase.Callback configurado
-     */
     private fun createDatabaseCallback(): RoomDatabase.Callback {
         return object : RoomDatabase.Callback() {
             override fun onCreate(db: SupportSQLiteDatabase) {
@@ -86,14 +47,6 @@ object DatabaseModule {
         }
     }
 
-    /**
-     * Insere dados iniciais no banco de dados.
-     *
-     * Cria o emprego padrão (id=1) e sua configuração inicial
-     * para que o app funcione corretamente na primeira execução.
-     *
-     * @param db Instância do banco SQLite
-     */
     private fun inserirDadosIniciais(db: SupportSQLiteDatabase) {
         val now = LocalDateTime.now().toString()
 
@@ -113,90 +66,68 @@ object DatabaseModule {
             """
             INSERT INTO configuracoes_emprego (
                 empregoId,
-                cargaHorariaDiaria,
-                cargaHorariaSemanal,
-                toleranciaAtraso,
-                toleranciaHoraExtra,
-                toleranciaIntervalo,
-                intervaloMinimo,
-                horaExtraAutomatica,
-                considerarFeriados,
-                considerarPontoFacultativo,
+                cargaHorariaDiariaMinutos,
+                jornadaMaximaDiariaMinutos,
+                intervaloMinimoInterjornadaMinutos,
+                intervaloMinimoMinutos,
+                toleranciaEntradaMinutos,
+                toleranciaSaidaMinutos,
+                toleranciaIntervaloMaisMinutos,
+                exigeJustificativaInconsistencia,
+                habilitarNsr,
                 tipoNsr,
-                prefixoNsr,
-                proximoNsr,
+                habilitarLocalizacao,
+                localizacaoAutomatica,
+                exibirLocalizacaoDetalhes,
+                exibirDuracaoTurno,
+                exibirDuracaoIntervalo,
+                primeiroDiaSemana,
+                primeiroDiaMes,
+                zerarSaldoSemanal,
+                zerarSaldoMensal,
+                ocultarSaldoTotal,
+                periodoBancoHorasMeses,
+                diasUteisLembreteFechamento,
+                habilitarSugestaoAjuste,
+                zerarBancoAntesPeriodo,
                 criadoEm,
                 atualizadoEm
             ) VALUES (
-                1,
-                480,
-                2400,
-                10,
-                10,
-                0,
-                60,
-                0,
-                1,
-                0,
-                'NENHUM',
-                NULL,
-                1,
-                '$now',
-                '$now'
+                1, 492, 600, 660, 60, 10, 10, 0, 0, 0, 'NUMERICO', 0, 0, 1, 1, 1, 'SEGUNDA', 1, 0, 0, 0, 0, 3, 0, 0, '$now', '$now'
             )
             """.trimIndent()
         )
     }
 
-    // ========================================================================
-    // DAOs
-    // ========================================================================
+    @Provides
+    @Singleton
+    fun providePontoDao(database: MeuPontoDatabase): PontoDao = database.pontoDao()
 
     @Provides
     @Singleton
-    fun providePontoDao(database: MeuPontoDatabase): PontoDao {
-        return database.pontoDao()
-    }
+    fun provideEmpregoDao(database: MeuPontoDatabase): EmpregoDao = database.empregoDao()
 
     @Provides
     @Singleton
-    fun provideEmpregoDao(database: MeuPontoDatabase): EmpregoDao {
-        return database.empregoDao()
-    }
+    fun provideConfiguracaoEmpregoDao(database: MeuPontoDatabase): ConfiguracaoEmpregoDao = database.configuracaoEmpregoDao()
 
     @Provides
     @Singleton
-    fun provideConfiguracaoEmpregoDao(database: MeuPontoDatabase): ConfiguracaoEmpregoDao {
-        return database.configuracaoEmpregoDao()
-    }
+    fun provideHorarioDiaSemanaDao(database: MeuPontoDatabase): HorarioDiaSemanaDao = database.horarioDiaSemanaDao()
 
     @Provides
     @Singleton
-    fun provideHorarioDiaSemanaDao(database: MeuPontoDatabase): HorarioDiaSemanaDao {
-        return database.horarioDiaSemanaDao()
-    }
+    fun provideAjusteSaldoDao(database: MeuPontoDatabase): AjusteSaldoDao = database.ajusteSaldoDao()
 
     @Provides
     @Singleton
-    fun provideAjusteSaldoDao(database: MeuPontoDatabase): AjusteSaldoDao {
-        return database.ajusteSaldoDao()
-    }
+    fun provideFechamentoPeriodoDao(database: MeuPontoDatabase): FechamentoPeriodoDao = database.fechamentoPeriodoDao()
 
     @Provides
     @Singleton
-    fun provideFechamentoPeriodoDao(database: MeuPontoDatabase): FechamentoPeriodoDao {
-        return database.fechamentoPeriodoDao()
-    }
+    fun provideMarcadorDao(database: MeuPontoDatabase): MarcadorDao = database.marcadorDao()
 
     @Provides
     @Singleton
-    fun provideMarcadorDao(database: MeuPontoDatabase): MarcadorDao {
-        return database.marcadorDao()
-    }
-
-    @Provides
-    @Singleton
-    fun provideAuditLogDao(database: MeuPontoDatabase): AuditLogDao {
-        return database.auditLogDao()
-    }
+    fun provideAuditLogDao(database: MeuPontoDatabase): AuditLogDao = database.auditLogDao()
 }
