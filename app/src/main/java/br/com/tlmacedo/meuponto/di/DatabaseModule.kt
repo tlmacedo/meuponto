@@ -44,7 +44,8 @@ object DatabaseModule {
                 MIGRATION_4_5,
                 MIGRATION_5_6,
                 MIGRATION_6_7,
-                MIGRATION_7_8
+                MIGRATION_7_8,
+                MIGRATION_8_9
             )
             .addCallback(createDatabaseCallback())
             .build()
@@ -104,8 +105,6 @@ object DatabaseModule {
                 jornadaMaximaDiariaMinutos,
                 intervaloMinimoInterjornadaMinutos,
                 intervaloMinimoMinutos,
-                toleranciaEntradaMinutos,
-                toleranciaSaidaMinutos,
                 toleranciaIntervaloMaisMinutos,
                 exigeJustificativaInconsistencia,
                 habilitarNsr,
@@ -132,8 +131,6 @@ object DatabaseModule {
                 600,    -- 10h máximo
                 660,    -- 11h interjornada
                 60,     -- 1h intervalo mínimo
-                0,      -- sem tolerância entrada
-                0,      -- sem tolerância saída
                 20,     -- +20min tolerância no retorno do intervalo
                 0,
                 0,

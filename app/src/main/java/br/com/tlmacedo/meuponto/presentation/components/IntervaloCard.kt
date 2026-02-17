@@ -17,10 +17,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -44,8 +46,9 @@ import java.time.format.DateTimeFormatter
  * Card que exibe um intervalo de trabalho (entrada -> saída).
  *
  * Mostra visualmente o período trabalhado com entrada, saída
- * e duração do intervalo de forma clara e intuitiva.
+ * e duração do turno de forma clara e intuitiva.
  * Quando o intervalo está aberto, exibe um contador em tempo real.
+ * Exibe também o tempo de intervalo/pausa antes do turno (quando houver).
  *
  * @param intervalo Intervalo a ser exibido
  * @param mostrarContadorTempoReal Se deve exibir contador em tempo real para intervalos abertos
@@ -53,6 +56,7 @@ import java.time.format.DateTimeFormatter
  *
  * @author Thiago
  * @since 1.0.0
+ * @updated 2.4.0 - Adicionada exibição do intervalo/pausa antes do turno
  */
 @Composable
 fun IntervaloCard(
@@ -62,115 +66,30 @@ fun IntervaloCard(
 ) {
     val formatadorHora = DateTimeFormatter.ofPattern("HH:mm")
 
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(16.dp),
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+    Column(modifier = modifier.fillMaxWidth()) {
+        // Exibe o intervalo/pausa ANTES do card (se houver)
+        if (intervalo.temPausaAntes) {
+            PausaEntreIntervalos(
+                texto = intervalo.formatarPausaAntes() ?: ""
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        // Card principal do turno
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            // Linha de Entrada
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(EntradaBg)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Login,
-                        contentDescription = "Entrada",
-                        tint = EntradaColor,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Entrada",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = EntradaColor
-                    )
-                    Text(
-                        text = intervalo.entrada.hora.format(formatadorHora),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                // Contador em tempo real para intervalos abertos
-                if (intervalo.aberto && mostrarContadorTempoReal) {
-                    LiveCounterCompact(
-                        dataHoraInicio = intervalo.entrada.dataHora
-                    )
-                }
-            }
-
-            // Linha de conexão com duração
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp)
+                    .padding(16.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .width(2.dp)
-                        .height(24.dp)
-                        .background(MaterialTheme.colorScheme.outlineVariant)
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-
-                if (intervalo.aberto && mostrarContadorTempoReal) {
-                    // Para intervalo aberto, mostra "Em andamento" com indicador animado
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Timer,
-                            contentDescription = null,
-                            tint = Warning,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            text = "Em andamento",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = Warning
-                        )
-                    }
-                } else {
-                    // Para intervalo fechado ou sem contador, mostra duração estática
-                    Icon(
-                        imageVector = Icons.Default.Timer,
-                        contentDescription = null,
-                        tint = if (intervalo.aberto) Warning else Success,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = intervalo.formatarDuracao(),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = if (intervalo.aberto) Warning else Success
-                    )
-                }
-            }
-
-            // Linha de Saída
-            if (intervalo.saida != null) {
+                // Linha de Entrada
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -180,65 +99,213 @@ fun IntervaloCard(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(SaidaBg)
+                            .background(EntradaBg)
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Logout,
-                            contentDescription = "Saída",
-                            tint = SaidaColor,
+                            imageVector = Icons.AutoMirrored.Filled.Login,
+                            contentDescription = "Entrada",
+                            tint = EntradaColor,
                             modifier = Modifier.size(20.dp)
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Saída",
+                            text = "Entrada",
                             style = MaterialTheme.typography.labelMedium,
-                            color = SaidaColor
+                            color = EntradaColor
                         )
                         Text(
-                            text = intervalo.saida.hora.format(formatadorHora),
+                            text = intervalo.entrada.hora.format(formatadorHora),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
                     }
-                }
-            } else {
-                // Saída pendente com visual melhorado
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(WarningLight)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Schedule,
-                            contentDescription = "Aguardando saída",
-                            tint = Warning,
-                            modifier = Modifier.size(20.dp)
+
+                    // Contador em tempo real para intervalos abertos
+                    if (intervalo.aberto && mostrarContadorTempoReal) {
+                        LiveCounterCompact(
+                            dataHoraInicio = intervalo.entrada.dataHora
                         )
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
+                }
+
+                // Linha de conexão com duração do TURNO
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(2.dp)
+                            .height(24.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    if (intervalo.aberto && mostrarContadorTempoReal) {
+                        // Para intervalo aberto, mostra "Em andamento" com indicador
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Timer,
+                                contentDescription = null,
+                                tint = Warning,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "Em andamento",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = Warning
+                            )
+                        }
+                    } else {
+                        // Para intervalo fechado, mostra duração do TURNO
+                        Icon(
+                            imageVector = Icons.Default.Timer,
+                            contentDescription = null,
+                            tint = if (intervalo.aberto) Warning else Success,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Saída",
+                            text = intervalo.formatarDuracao(),
                             style = MaterialTheme.typography.labelMedium,
-                            color = Warning
-                        )
-                        Text(
-                            text = "Aguardando...",
-                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Medium,
-                            color = Warning
+                            color = if (intervalo.aberto) Warning else Success
                         )
+                    }
+                }
+
+                // Linha de Saída
+                if (intervalo.saida != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(SaidaBg)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Logout,
+                                contentDescription = "Saída",
+                                tint = SaidaColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Saída",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = SaidaColor
+                            )
+                            Text(
+                                text = intervalo.saida.hora.format(formatadorHora),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                } else {
+                    // Saída pendente
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(WarningLight)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = "Aguardando saída",
+                                tint = Warning,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Saída",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Warning
+                            )
+                            Text(
+                                text = "Aguardando...",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = Warning
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * Componente que exibe o tempo de pausa/intervalo entre turnos.
+ */
+@Composable
+private fun PausaEntreIntervalos(
+    texto: String,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier
+                .padding(horizontal = 12.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Coffee,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(14.dp)
+            )
+            Text(
+                text = texto,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
     }
 }

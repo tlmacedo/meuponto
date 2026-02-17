@@ -26,7 +26,7 @@ import br.com.tlmacedo.meuponto.data.local.database.entity.PontoEntity
  * Classe principal do banco de dados Room.
  *
  * @since 1.0.0
- * @updated 2.1.0 - Versão 8: Removida coluna tipo da tabela pontos
+ * @updated 2.5.0 - Versão 9: Removidas toleranciaEntradaMinutos e toleranciaSaidaMinutos de configuracoes_emprego
  */
 @Database(
     entities = [
@@ -39,7 +39,7 @@ import br.com.tlmacedo.meuponto.data.local.database.entity.PontoEntity
         MarcadorEntity::class,
         AuditLogEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

@@ -12,7 +12,7 @@ import java.time.format.DateTimeFormatter
  *
  * @author Thiago
  * @since 2.0.0
- * @updated 2.3.3 - Adicionado suporte a data de início e último fechamento.
+ * @updated 2.5.0 - Removidas tolerâncias de entrada/saída (agora por dia da semana)
  */
 data class EditarEmpregoUiState(
     val empregoId: Long? = null,
@@ -27,9 +27,7 @@ data class EditarEmpregoUiState(
     val intervaloMinimoMinutos: Int = 60,
     val intervaloInterjornadaMinutos: Int = 660,
 
-    // TOLERÂNCIAS GLOBAIS
-    val toleranciaEntradaMinutos: Int = 10,
-    val toleranciaSaidaMinutos: Int = 10,
+    // TOLERÂNCIAS (apenas intervalo - entrada/saída são por dia)
     val toleranciaIntervaloMaisMinutos: Int = 0,
 
     // NSR E LOCALIZAÇÃO
@@ -44,7 +42,6 @@ data class EditarEmpregoUiState(
     // PERÍODO E BANCO DE HORAS
     val primeiroDiaSemana: DiaSemana = DiaSemana.SEGUNDA,
     val primeiroDiaMes: Int = 1,
-    /** 0=Desativado, 1-3=Semanas, 4-15=Meses (valor-3) */
     val periodoBancoHorasValor: Int = 0,
     val zerarSaldoMensal: Boolean = false,
     val zerarBancoAntesPeriodo: Boolean = false,
@@ -55,7 +52,7 @@ data class EditarEmpregoUiState(
     val isSaving: Boolean = false,
     val erro: String? = null,
     val secaoExpandida: SecaoFormulario = SecaoFormulario.DADOS_BASICOS,
-    
+
     // Pickers
     val showInicioTrabalhoPicker: Boolean = false,
     val showUltimoFechamentoPicker: Boolean = false
@@ -73,9 +70,6 @@ data class EditarEmpregoUiState(
     val ultimoFechamentoBancoFormatado: String
         get() = ultimoFechamentoBanco?.format(dateFormatter) ?: "Selecionar data"
 
-    /**
-     * Retorna o texto formatado para o período selecionado.
-     */
     val descricaoPeriodoBancoHoras: String
         get() = when (periodoBancoHorasValor) {
             0 -> "Desabilitado"
@@ -86,9 +80,6 @@ data class EditarEmpregoUiState(
             else -> "Personalizado"
         }
 
-    /**
-     * Retorna o texto dinâmico para a opção de zerar saldo.
-     */
     val labelZerarSaldoDinamico: String
         get() = when (periodoBancoHorasValor) {
             0 -> "Zerar saldo"
@@ -101,14 +92,6 @@ data class EditarEmpregoUiState(
                 else "Zerar saldo a cada $meses meses"
             }
             else -> "Zerar saldo periodicamente"
-        }
-
-    val descricaoTolerancias: String
-        get() = buildString {
-            append("Entrada: ${toleranciaEntradaMinutos}min | Saída: ${toleranciaSaidaMinutos}min")
-            if (toleranciaIntervaloMaisMinutos > 0) {
-                append(" | Intervalo: +${toleranciaIntervaloMaisMinutos}min")
-            }
         }
 }
 

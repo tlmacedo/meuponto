@@ -9,7 +9,8 @@ import java.time.LocalDateTime
  *
  * @author Thiago
  * @since 2.0.0
- * @updated 2.3.2 - Adicionado zerarBancoAntesPeriodo e suporte a períodos flexíveis.
+ * @updated 2.5.0 - Removidas toleranciaEntradaMinutos e toleranciaSaidaMinutos
+ *                  (agora configuradas apenas por dia em HorarioDiaSemana)
  */
 data class ConfiguracaoEmprego(
     val id: Long = 0,
@@ -21,9 +22,7 @@ data class ConfiguracaoEmprego(
     val intervaloMinimoInterjornadaMinutos: Int = 660,
     val intervaloMinimoMinutos: Int = 60,
 
-    // TOLERÂNCIAS GLOBAIS
-    val toleranciaEntradaMinutos: Int = 10,
-    val toleranciaSaidaMinutos: Int = 10,
+    // TOLERÂNCIAS (apenas intervalo - entrada/saída são por dia)
     val toleranciaIntervaloMaisMinutos: Int = 0,
 
     // VALIDAÇÕES
@@ -52,10 +51,6 @@ data class ConfiguracaoEmprego(
     val ocultarSaldoTotal: Boolean = false,
 
     // BANCO DE HORAS
-    /**
-     * Valor do período do banco de horas.
-     * Mapeamento: 0=Desativado, 1-3=Semanas, 4-15=Meses (valor-3)
-     */
     val periodoBancoHorasMeses: Int = 0,
     val ultimoFechamentoBanco: LocalDate? = null,
     val diasUteisLembreteFechamento: Int = 3,
@@ -80,20 +75,6 @@ data class ConfiguracaoEmprego(
 
     val intervaloMinimoFormatado: String
         get() = formatarMinutosComoHoras(intervaloMinimoMinutos)
-
-    val temToleranciasConfiguradas: Boolean
-        get() = toleranciaEntradaMinutos > 0 ||
-                toleranciaSaidaMinutos > 0 ||
-                toleranciaIntervaloMaisMinutos > 0
-
-    val descricaoTolerancias: String
-        get() = buildString {
-            append("Entrada: ${toleranciaEntradaMinutos}min")
-            append(" | Saída: ${toleranciaSaidaMinutos}min")
-            if (toleranciaIntervaloMaisMinutos > 0) {
-                append(" | Intervalo: +${toleranciaIntervaloMaisMinutos}min")
-            }
-        }
 
     private fun formatarMinutosComoHoras(minutos: Int): String {
         val horas = minutos / 60

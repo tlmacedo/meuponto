@@ -110,6 +110,11 @@ class HomeViewModel @Inject constructor(
             is HomeAction.AtualizarHora -> atualizarHora()
             is HomeAction.LimparErro -> limparErro()
             is HomeAction.RecarregarDados -> recarregarDados()
+
+            // No when de onAction, adicione:
+            is HomeAction.AbrirDatePicker -> abrirDatePicker()
+            is HomeAction.FecharDatePicker -> fecharDatePicker()
+
         }
     }
 
@@ -462,4 +467,23 @@ class HomeViewModel @Inject constructor(
     private fun limparErro() {
         _uiState.update { it.copy(erro = null) }
     }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // DATE PICKER
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Abre o DatePicker para seleção de data.
+     */
+    private fun abrirDatePicker() {
+        _uiState.update { it.copy(showDatePicker = true) }
+    }
+
+    /**
+     * Fecha o DatePicker.
+     */
+    private fun fecharDatePicker() {
+        _uiState.update { it.copy(showDatePicker = false) }
+    }
+
 }

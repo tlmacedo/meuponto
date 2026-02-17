@@ -7,6 +7,7 @@ import kotlin.math.abs
  *
  * @author Thiago
  * @since 1.0.0
+ * @updated 2.4.0 - Adicionados formatadores para turno e intervalo
  */
 
 /**
@@ -48,6 +49,36 @@ fun Int.minutosParaDescricao(): String {
         minutos == 0 -> "$horas hora${if (horas > 1) "s" else ""}"
         else -> "$horas hora${if (horas > 1) "s" else ""} e $minutos minuto${if (minutos > 1) "s" else ""}"
     }
+}
+
+/**
+ * Converte minutos para formato de duração compacta.
+ *
+ * @return String formatada (ex: "05h 04m")
+ */
+fun Int.minutosParaDuracaoCompacta(): String {
+    val totalMinutos = abs(this)
+    val horas = totalMinutos / 60
+    val minutos = totalMinutos % 60
+    return String.format("%02dh %02dm", horas, minutos)
+}
+
+/**
+ * Converte minutos para descrição de turno.
+ *
+ * @return String formatada (ex: "Turno de 05h 04m")
+ */
+fun Int.minutosParaTurno(): String {
+    return "Turno de ${this.minutosParaDuracaoCompacta()}"
+}
+
+/**
+ * Converte minutos para descrição de intervalo.
+ *
+ * @return String formatada (ex: "Intervalo de 01h 14m")
+ */
+fun Int.minutosParaIntervalo(): String {
+    return "Intervalo de ${this.minutosParaDuracaoCompacta()}"
 }
 
 /**

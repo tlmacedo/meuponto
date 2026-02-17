@@ -19,12 +19,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,16 +40,19 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import br.com.tlmacedo.meuponto.domain.model.TipoPonto
 import br.com.tlmacedo.meuponto.presentation.components.DateNavigator
 import br.com.tlmacedo.meuponto.presentation.components.EmpregoSelectorBottomSheet
 import br.com.tlmacedo.meuponto.presentation.components.EmpregoSelectorChip
 import br.com.tlmacedo.meuponto.presentation.components.IntervaloCard
 import br.com.tlmacedo.meuponto.presentation.components.MeuPontoTopBar
 import br.com.tlmacedo.meuponto.presentation.components.RegistrarPontoButton
+import br.com.tlmacedo.meuponto.presentation.components.RegistrarPontoManualButton
 import br.com.tlmacedo.meuponto.presentation.components.ResumoCard
 import br.com.tlmacedo.meuponto.presentation.components.TimePickerDialog
-import br.com.tlmacedo.meuponto.domain.model.TipoPonto
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+
 
 /**
  * Tela principal do aplicativo Meu Ponto.
@@ -53,7 +60,7 @@ import java.time.format.DateTimeFormatter
  * Exibe o resumo do dia, botão de registro de ponto,
  * navegação por data, seleção de emprego e lista de intervalos
  * trabalhados de forma visual e intuitiva.
- * 
+ *
  * Inclui contador em tempo real quando há jornada em andamento.
  *
  * @param viewModel ViewModel da tela
@@ -64,6 +71,8 @@ import java.time.format.DateTimeFormatter
  * @author Thiago
  * @since 2.0.0
  */
+// E o DatePickerDialog corrigido:
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
@@ -114,6 +123,43 @@ fun HomeScreen(
         )
     }
 
+    // Dialog de DatePicker - CORRIGIDO com UTC
+    if (uiState.showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = uiState.dataSelecionada
+                .atStartOfDay()
+                .atZone(ZoneOffset.UTC)
+                .toInstant()
+                .toEpochMilli()
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { viewModel.onAction(HomeAction.FecharDatePicker) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val selectedDate = java.time.Instant.ofEpochMilli(millis)
+                                .atZone(ZoneOffset.UTC)
+                                .toLocalDate()
+                            viewModel.onAction(HomeAction.SelecionarData(selectedDate))
+                        }
+                        viewModel.onAction(HomeAction.FecharDatePicker)
+                    }
+                ) {
+                    Text("Confirmar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onAction(HomeAction.FecharDatePicker) }) {
+                    Text("Cancelar")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
     // Dialog de confirmação de exclusão
     if (uiState.showDeleteConfirmDialog && uiState.pontoParaExcluir != null) {
         DeletePontoConfirmDialog(
@@ -137,14 +183,13 @@ fun HomeScreen(
             }
         )
     }
-
     Scaffold(
         topBar = {
             MeuPontoTopBar(
                 title = "Meu Ponto",
-                showHistoryButton = true,
+                showTodayButton = true,  // ALTERADO de showHistoryButton
                 showSettingsButton = true,
-                onHistoryClick = { viewModel.onAction(HomeAction.NavegarParaHistorico) },
+                onTodayClick = { viewModel.onAction(HomeAction.IrParaHoje) },  // ALTERADO
                 onSettingsClick = { viewModel.onAction(HomeAction.NavegarParaConfiguracoes) }
             )
         },
@@ -203,7 +248,7 @@ internal fun HomeContent(
                 podeNavegarProximo = uiState.podeNavegarProximo,
                 onDiaAnterior = { onAction(HomeAction.DiaAnterior) },
                 onProximoDia = { onAction(HomeAction.ProximoDia) },
-                onIrParaHoje = { onAction(HomeAction.IrParaHoje) }
+                onSelecionarData = { onAction(HomeAction.AbrirDatePicker) }  // ALTERADO
             )
         }
 
@@ -217,8 +262,9 @@ internal fun HomeContent(
             )
         }
 
-        // Botão de Registrar Ponto (apenas se puder registrar)
-        if (uiState.podeRegistrarPonto) {
+        // Botão de Registrar Ponto - lógica por tipo de dia
+        if (uiState.podeRegistrarPontoAutomatico) {
+            // Dia atual: botão completo (automático + manual)
             item {
                 RegistrarPontoButton(
                     proximoTipo = uiState.proximoTipo,
@@ -227,15 +273,23 @@ internal fun HomeContent(
                     onRegistrarManual = { onAction(HomeAction.AbrirTimePickerDialog) }
                 )
             }
+        } else if (uiState.podeRegistrarPontoManual) {
+            // Dias anteriores: apenas registro manual
+            item {
+                RegistrarPontoManualButton(
+                    proximoTipo = uiState.proximoTipo,
+                    dataFormatada = uiState.dataFormatadaCurta,
+                    onRegistrarManual = { onAction(HomeAction.AbrirTimePickerDialog) }
+                )
+            }
         }
 
-        // Aviso de data futura
+        // Aviso de data futura (sem registro de ponto)
         if (uiState.isFuturo) {
             item {
                 FutureDateWarning()
             }
         }
-
         // Aviso de sem emprego
         if (!uiState.temEmpregoAtivo) {
             item {
@@ -298,7 +352,7 @@ private fun DeletePontoConfirmDialog(
     } else {
         "ponto"
     }
-    
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Excluir Ponto") },

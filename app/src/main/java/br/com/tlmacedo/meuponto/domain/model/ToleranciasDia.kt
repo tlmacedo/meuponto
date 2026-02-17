@@ -4,47 +4,40 @@ package br.com.tlmacedo.meuponto.domain.model
 /**
  * Modelo que representa as tolerâncias efetivas para um dia específico.
  *
- * Combina as tolerâncias globais do emprego com as específicas do dia,
- * aplicando a regra de que valores específicos sobrescrevem os globais.
+ * As tolerâncias de entrada/saída são configuradas por dia da semana
+ * em HorarioDiaSemana. A tolerância de intervalo pode vir do global
+ * ou do dia específico.
  *
  * @property entradaMinutos Tolerância de entrada em minutos
  * @property saidaMinutos Tolerância de saída em minutos
  * @property intervaloMaisMinutos Tolerância para mais no intervalo
- * @property usaToleranciaEspecificaEntrada Se true, está usando tolerância específica do dia
- * @property usaToleranciaEspecificaSaida Se true, está usando tolerância específica do dia
  *
  * @author Thiago
  * @since 2.1.0
- * @updated 2.3.1 - Removida tolerância de redução de intervalo
+ * @updated 2.5.0 - Tolerâncias de entrada/saída agora vêm apenas de HorarioDiaSemana
  */
 data class ToleranciasDia(
     val entradaMinutos: Int,
     val saidaMinutos: Int,
-    val intervaloMaisMinutos: Int,
-    val usaToleranciaEspecificaEntrada: Boolean = false,
-    val usaToleranciaEspecificaSaida: Boolean = false
+    val intervaloMaisMinutos: Int
 ) {
     companion object {
         /**
-         * Cria ToleranciasDia a partir das configurações globais e do dia específico.
+         * Cria ToleranciasDia a partir das configurações do dia específico.
          *
-         * @param configuracao Configurações globais do emprego
-         * @param horarioDia Configurações específicas do dia (opcional)
+         * @param configuracao Configurações globais do emprego (para tolerância de intervalo)
+         * @param horarioDia Configurações específicas do dia
          * @return Tolerâncias efetivas para o dia
          */
         fun criar(
             configuracao: ConfiguracaoEmprego,
-            horarioDia: HorarioDiaSemana? = null
+            horarioDia: HorarioDiaSemana?
         ): ToleranciasDia {
             return ToleranciasDia(
-                entradaMinutos = horarioDia?.toleranciaEntradaMinutos
-                    ?: configuracao.toleranciaEntradaMinutos,
-                saidaMinutos = horarioDia?.toleranciaSaidaMinutos
-                    ?: configuracao.toleranciaSaidaMinutos,
+                entradaMinutos = horarioDia?.toleranciaEntradaMinutos ?: PADRAO.entradaMinutos,
+                saidaMinutos = horarioDia?.toleranciaSaidaMinutos ?: PADRAO.saidaMinutos,
                 intervaloMaisMinutos = horarioDia?.toleranciaIntervaloMaisMinutos
-                    ?: configuracao.toleranciaIntervaloMaisMinutos,
-                usaToleranciaEspecificaEntrada = horarioDia?.toleranciaEntradaMinutos != null,
-                usaToleranciaEspecificaSaida = horarioDia?.toleranciaSaidaMinutos != null
+                    ?: configuracao.toleranciaIntervaloMaisMinutos
             )
         }
 
@@ -70,9 +63,7 @@ data class ToleranciasDia(
     val descricao: String
         get() = buildString {
             append("Entrada: ${entradaMinutos}min")
-            if (usaToleranciaEspecificaEntrada) append("*")
             append(" | Saída: ${saidaMinutos}min")
-            if (usaToleranciaEspecificaSaida) append("*")
             if (intervaloMaisMinutos > 0) {
                 append(" | Intervalo (+): ${intervaloMaisMinutos}min")
             }

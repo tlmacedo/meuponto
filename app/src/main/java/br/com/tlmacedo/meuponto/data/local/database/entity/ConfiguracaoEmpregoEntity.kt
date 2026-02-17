@@ -12,6 +12,10 @@ import java.time.LocalDateTime
 
 /**
  * Entidade Room que armazena as configurações específicas de cada emprego.
+ *
+ * @since 2.0.0
+ * @updated 2.5.0 - Removidas toleranciaEntradaMinutos e toleranciaSaidaMinutos
+ *                  (agora configuradas apenas por dia em HorarioDiaSemanaEntity)
  */
 @Entity(
     tableName = "configuracoes_emprego",
@@ -29,50 +33,48 @@ data class ConfiguracaoEmpregoEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val empregoId: Long,
-    
+
     // JORNADA DE TRABALHO
     val cargaHorariaDiariaMinutos: Int = 492,
     val jornadaMaximaDiariaMinutos: Int = 600,
     val intervaloMinimoInterjornadaMinutos: Int = 660,
     val intervaloMinimoMinutos: Int = 60,
-    
-    // TOLERÂNCIAS GLOBAIS
-    val toleranciaEntradaMinutos: Int = 10,
-    val toleranciaSaidaMinutos: Int = 10,
+
+    // TOLERÂNCIAS (apenas intervalo - entrada/saída são por dia)
     val toleranciaIntervaloMaisMinutos: Int = 0,
-    
+
     // VALIDAÇÕES
     val exigeJustificativaInconsistencia: Boolean = false,
-    
+
     // NSR
     val habilitarNsr: Boolean = false,
     val tipoNsr: TipoNsr = TipoNsr.NUMERICO,
-    
+
     // LOCALIZAÇÃO
     val habilitarLocalizacao: Boolean = false,
     val localizacaoAutomatica: Boolean = false,
     val exibirLocalizacaoDetalhes: Boolean = true,
-    
+
     // EXIBIÇÃO
     val exibirDuracaoTurno: Boolean = true,
     val exibirDuracaoIntervalo: Boolean = true,
-    
+
     // PERÍODO
     val primeiroDiaSemana: DiaSemana = DiaSemana.SEGUNDA,
     val primeiroDiaMes: Int = 1,
-    
+
     // SALDO
     val zerarSaldoSemanal: Boolean = false,
     val zerarSaldoMensal: Boolean = false,
     val ocultarSaldoTotal: Boolean = false,
-    
+
     // BANCO DE HORAS
     val periodoBancoHorasMeses: Int = 0,
     val ultimoFechamentoBanco: LocalDate? = null,
     val diasUteisLembreteFechamento: Int = 3,
     val habilitarSugestaoAjuste: Boolean = false,
     val zerarBancoAntesPeriodo: Boolean = false,
-    
+
     // AUDITORIA
     val criadoEm: LocalDateTime = LocalDateTime.now(),
     val atualizadoEm: LocalDateTime = LocalDateTime.now()
@@ -86,8 +88,6 @@ fun ConfiguracaoEmpregoEntity.toDomain(): br.com.tlmacedo.meuponto.domain.model.
         jornadaMaximaDiariaMinutos = jornadaMaximaDiariaMinutos,
         intervaloMinimoInterjornadaMinutos = intervaloMinimoInterjornadaMinutos,
         intervaloMinimoMinutos = intervaloMinimoMinutos,
-        toleranciaEntradaMinutos = toleranciaEntradaMinutos,
-        toleranciaSaidaMinutos = toleranciaSaidaMinutos,
         toleranciaIntervaloMaisMinutos = toleranciaIntervaloMaisMinutos,
         exigeJustificativaInconsistencia = exigeJustificativaInconsistencia,
         habilitarNsr = habilitarNsr,
@@ -119,8 +119,6 @@ fun br.com.tlmacedo.meuponto.domain.model.ConfiguracaoEmprego.toEntity(): Config
         jornadaMaximaDiariaMinutos = jornadaMaximaDiariaMinutos,
         intervaloMinimoInterjornadaMinutos = intervaloMinimoInterjornadaMinutos,
         intervaloMinimoMinutos = intervaloMinimoMinutos,
-        toleranciaEntradaMinutos = toleranciaEntradaMinutos,
-        toleranciaSaidaMinutos = toleranciaSaidaMinutos,
         toleranciaIntervaloMaisMinutos = toleranciaIntervaloMaisMinutos,
         exigeJustificativaInconsistencia = exigeJustificativaInconsistencia,
         habilitarNsr = habilitarNsr,

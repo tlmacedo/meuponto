@@ -7,21 +7,17 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -31,17 +27,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import java.time.LocalDate
 
 /**
  * Componente para navegação entre datas.
  *
- * Exibe a data atual com setas para navegar entre dias
- * e um botão para voltar rapidamente para hoje.
+ * Exibe a data atual com setas para navegar entre dias.
+ * - Seta esquerda: sempre volta um dia
+ * - Seta direita: sempre avança um dia
+ * - Clique na data: abre seletor de calendário
  *
  * @param dataFormatada Data formatada para exibição principal
  * @param dataFormatadaCurta Data em formato curto (dd/MM/yyyy)
@@ -50,12 +46,13 @@ import java.time.LocalDate
  * @param podeNavegarProximo Se pode navegar para próximo dia
  * @param onDiaAnterior Callback para navegar ao dia anterior
  * @param onProximoDia Callback para navegar ao próximo dia
- * @param onIrParaHoje Callback para ir para hoje
- * @param onSelecionarData Callback para abrir seletor de data (opcional)
+ * @param onSelecionarData Callback para abrir seletor de data
  * @param modifier Modificador opcional
  *
  * @author Thiago
  * @since 2.0.0
+ * @updated 2.5.0 - Navegação sempre dia a dia, clique na data abre calendário
+ * @updated 2.6.0 - Data curta sempre visível
  */
 @Composable
 fun DateNavigator(
@@ -66,8 +63,7 @@ fun DateNavigator(
     podeNavegarProximo: Boolean,
     onDiaAnterior: () -> Unit,
     onProximoDia: () -> Unit,
-    onIrParaHoje: () -> Unit,
-    onSelecionarData: (() -> Unit)? = null,
+    onSelecionarData: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -85,7 +81,7 @@ fun DateNavigator(
                 .fillMaxWidth()
                 .padding(8.dp)
         ) {
-            // Botão dia anterior
+            // Botão dia anterior - sempre navega para trás
             IconButton(
                 onClick = onDiaAnterior,
                 enabled = podeNavegarAnterior
@@ -102,9 +98,9 @@ fun DateNavigator(
                 )
             }
 
-            // Data central com animação
+            // Data central - clicável para abrir calendário
             AnimatedContent(
-                targetState = dataFormatada,
+                targetState = dataFormatada to dataFormatadaCurta,
                 transitionSpec = {
                     (slideInHorizontally { width -> width } + fadeIn())
                         .togetherWith(slideOutHorizontally { width -> -width } + fadeOut())
@@ -112,71 +108,44 @@ fun DateNavigator(
                 label = "date_animation",
                 modifier = Modifier
                     .weight(1f)
-                    .then(
-                        if (onSelecionarData != null) {
-                            Modifier.clickable { onSelecionarData() }
-                        } else {
-                            Modifier
-                        }
-                    )
-            ) { data ->
+                    .clickable { onSelecionarData() }
+            ) { (dataLonga, dataCurta) ->
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = data,
+                        text = dataLonga,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = MaterialTheme.colorScheme.primary,
                         textAlign = TextAlign.Center
                     )
-                    if (!isHoje) {
-                        Text(
-                            text = dataFormatadaCurta,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                    }
+                    // Sempre mostrar a data curta
+                    Text(
+                        text = dataCurta,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
 
-            // Botão Hoje / Próximo dia
-            if (!isHoje) {
-                // Botão para voltar para hoje
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .clickable { onIrParaHoje() }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Today,
-                        contentDescription = "Ir para hoje",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            } else {
-                // Botão próximo dia
-                IconButton(
-                    onClick = onProximoDia,
-                    enabled = podeNavegarProximo
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = "Próximo dia",
-                        tint = if (podeNavegarProximo) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                        },
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
+            // Botão próximo dia - sempre navega para frente
+            IconButton(
+                onClick = onProximoDia,
+                enabled = podeNavegarProximo
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = "Próximo dia",
+                    tint = if (podeNavegarProximo) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                    },
+                    modifier = Modifier.size(32.dp)
+                )
             }
         }
     }

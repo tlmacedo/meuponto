@@ -8,6 +8,8 @@ import java.time.LocalDate
 
 /**
  * Sealed class que representa as ações possíveis na tela de edição de emprego.
+ *
+ * @updated 2.5.0 - Removidas ações de tolerância entrada/saída
  */
 sealed class EditarEmpregoAction {
     // Dados básicos
@@ -20,7 +22,7 @@ sealed class EditarEmpregoAction {
     data class AlterarIntervaloMinimo(val minutos: Int) : EditarEmpregoAction()
     data class AlterarIntervaloInterjornada(val minutos: Int) : EditarEmpregoAction()
 
-    // Tolerâncias
+    // Tolerâncias (apenas intervalo)
     data class AlterarToleranciaIntervaloMais(val minutos: Int) : EditarEmpregoAction()
 
     // NSR

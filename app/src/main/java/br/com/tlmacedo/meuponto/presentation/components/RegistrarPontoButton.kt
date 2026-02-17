@@ -1,7 +1,6 @@
 // Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/presentation/components/RegistrarPontoButton.kt
 package br.com.tlmacedo.meuponto.presentation.components
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -15,48 +14,39 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import br.com.tlmacedo.meuponto.domain.model.TipoPonto
 import br.com.tlmacedo.meuponto.domain.usecase.ponto.ProximoPonto
 import br.com.tlmacedo.meuponto.presentation.theme.EntradaColor
 import br.com.tlmacedo.meuponto.presentation.theme.SaidaColor
-import br.com.tlmacedo.meuponto.presentation.theme.Success
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 /**
- * Botão principal para registrar ponto.
+ * Botão principal para registrar ponto no dia atual.
  *
- * Exibe um botão grande e visualmente atrativo que indica
- * claramente se o próximo registro será entrada ou saída,
- * com opção de informar horário personalizado.
+ * Exibe um botão grande com horário atual e opção de registro manual.
+ * Usado apenas para o dia de HOJE.
  *
  * @param proximoTipo Tipo do próximo ponto (ENTRADA ou SAIDA)
  * @param horaAtual Hora atual para exibição
@@ -105,7 +95,7 @@ fun RegistrarPontoButton(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Área principal clicável
+            // Área principal clicável - registro automático
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -171,6 +161,103 @@ fun RegistrarPontoButton(
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
                     )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Botão para registrar ponto manual em dias anteriores.
+ *
+ * Exibe apenas a opção de informar horário, sem registro automático.
+ * Usado para dias PASSADOS.
+ *
+ * @param proximoTipo Tipo do próximo ponto (ENTRADA ou SAIDA)
+ * @param dataFormatada Data formatada para exibição
+ * @param onRegistrarManual Callback para registro com horário personalizado
+ * @param modifier Modificador opcional
+ *
+ * @author Thiago
+ * @since 2.6.0
+ */
+@Composable
+fun RegistrarPontoManualButton(
+    proximoTipo: ProximoPonto,
+    dataFormatada: String,
+    onRegistrarManual: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isEntrada = proximoTipo.isEntrada
+    val corPrincipal = if (isEntrada) EntradaColor else SaidaColor
+    val icone = if (isEntrada) Icons.AutoMirrored.Filled.Login else Icons.AutoMirrored.Filled.Logout
+
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "scale"
+    )
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = corPrincipal
+        ),
+        shape = RoundedCornerShape(20.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .scale(scale)
+            .shadow(4.dp, RoundedCornerShape(20.dp))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onRegistrarManual
+                )
+                .padding(20.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = icone,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Registrar ${proximoTipo.descricao}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Schedule,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Informar horário",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+                        )
+                    }
                 }
             }
         }
