@@ -126,6 +126,9 @@ interface PontoDao {
     @Query("SELECT * FROM pontos WHERE empregoId = :empregoId ORDER BY dataHora DESC LIMIT 1")
     suspend fun buscarUltimoPonto(empregoId: Long): PontoEntity?
 
+    @Query("SELECT MIN(data) FROM pontos WHERE empregoId = :empregoId")
+    suspend fun buscarPrimeiraData(empregoId: Long): LocalDate?
+
     @Query("SELECT * FROM pontos WHERE empregoId = :empregoId ORDER BY dataHora DESC LIMIT 1")
     fun observarUltimoPonto(empregoId: Long): Flow<PontoEntity?>
 

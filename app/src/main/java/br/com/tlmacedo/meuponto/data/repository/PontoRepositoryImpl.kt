@@ -51,6 +51,10 @@ class PontoRepositoryImpl @Inject constructor(
         pontoDao.excluirPorId(id)
     }
 
+    override suspend fun buscarPrimeiraData(empregoId: Long): LocalDate? {
+        return pontoDao.buscarPrimeiraData(empregoId)
+    }
+
     // ========================================================================
     // Operações de Leitura - Por ID
     // ========================================================================

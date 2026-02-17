@@ -115,6 +115,50 @@ class HomeViewModel @Inject constructor(
             is HomeAction.AbrirDatePicker -> abrirDatePicker()
             is HomeAction.FecharDatePicker -> fecharDatePicker()
 
+            is HomeAction.NavegarParaNovoEmprego -> navegarParaNovoEmprego()
+            is HomeAction.NavegarParaEditarEmprego -> navegarParaEditarEmprego()
+            is HomeAction.AbrirMenuEmprego -> abrirMenuEmprego()
+            is HomeAction.FecharMenuEmprego -> fecharMenuEmprego()
+
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // MENU DE EMPREGO
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Abre o menu de opções do emprego.
+     */
+    private fun abrirMenuEmprego() {
+        _uiState.update { it.copy(showEmpregoMenu = true) }
+    }
+
+    /**
+     * Fecha o menu de opções do emprego.
+     */
+    private fun fecharMenuEmprego() {
+        _uiState.update { it.copy(showEmpregoMenu = false) }
+    }
+
+    /**
+     * Navega para a tela de criar novo emprego.
+     */
+    private fun navegarParaNovoEmprego() {
+        viewModelScope.launch {
+            fecharMenuEmprego()
+            _uiEvent.emit(HomeUiEvent.NavegarParaNovoEmprego)
+        }
+    }
+
+    /**
+     * Navega para a tela de editar o emprego ativo.
+     */
+    private fun navegarParaEditarEmprego() {
+        val empregoId = _uiState.value.empregoAtivo?.id ?: return
+        viewModelScope.launch {
+            fecharMenuEmprego()
+            _uiEvent.emit(HomeUiEvent.NavegarParaEditarEmprego(empregoId))
         }
     }
 
@@ -128,7 +172,13 @@ class HomeViewModel @Inject constructor(
     private fun carregarEmpregoAtivo() {
         viewModelScope.launch {
             obterEmpregoAtivoUseCase.observar().collect { emprego ->
+                val empregoAnterior = _uiState.value.empregoAtivo
                 _uiState.update { it.copy(empregoAtivo = emprego) }
+
+                // Recarrega banco de horas se o emprego mudou
+                if (emprego != null && empregoAnterior?.id != emprego.id) {
+                    carregarBancoHoras()
+                }
             }
         }
     }
@@ -152,10 +202,8 @@ class HomeViewModel @Inject constructor(
 
     /**
      * Carrega os pontos do dia selecionado.
-     * Nota: Atualmente o use case não filtra por emprego - isso será implementado futuramente.
      */
     private fun carregarPontosDoDia() {
-        // Cancela coleta anterior
         pontosCollectionJob?.cancel()
 
         val data = _uiState.value.dataSelecionada
@@ -163,7 +211,6 @@ class HomeViewModel @Inject constructor(
         pontosCollectionJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            // Usa a assinatura atual do use case (apenas data)
             obterPontosDoDiaUseCase(data).collect { pontos ->
                 val resumo = calcularResumoDiaUseCase(pontos, data)
                 val proximoTipo = determinarProximoTipoPontoUseCase(pontos)
@@ -181,17 +228,21 @@ class HomeViewModel @Inject constructor(
     }
 
     /**
-     * Carrega o banco de horas.
-     * Nota: Atualmente o use case não filtra por emprego - isso será implementado futuramente.
+     * Carrega o banco de horas até a data selecionada.
+     * O saldo é dinâmico: calculado desde o último fechamento até a data visualizada.
      */
     private fun carregarBancoHoras() {
-        // Cancela coleta anterior
         bancoHorasCollectionJob?.cancel()
 
+        val empregoId = _uiState.value.empregoAtivo?.id ?: return
+        val dataSelecionada = _uiState.value.dataSelecionada
+
         bancoHorasCollectionJob = viewModelScope.launch {
-            // Usa a assinatura atual do use case (sem empregoId)
-            calcularBancoHorasUseCase().collect { banco ->
-                _uiState.update { it.copy(bancoHoras = banco) }
+            calcularBancoHorasUseCase(
+                empregoId = empregoId,
+                ateData = dataSelecionada
+            ).collect { resultado ->
+                _uiState.update { it.copy(bancoHoras = resultado.bancoHoras) }
             }
         }
     }
@@ -260,10 +311,12 @@ class HomeViewModel @Inject constructor(
 
     /**
      * Seleciona uma data específica e recarrega os dados.
+     * O banco de horas é recalculado até a nova data selecionada.
      */
     private fun selecionarData(data: LocalDate) {
         _uiState.update { it.copy(dataSelecionada = data) }
         carregarPontosDoDia()
+        carregarBancoHoras() // Saldo dinâmico até a data selecionada
     }
 
     // ══════════════════════════════════════════════════════════════════════

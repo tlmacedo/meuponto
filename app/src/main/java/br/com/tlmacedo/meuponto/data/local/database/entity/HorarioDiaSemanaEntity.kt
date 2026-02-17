@@ -11,6 +11,9 @@ import java.time.LocalTime
 
 /**
  * Entidade Room que armazena a configuração de horários para cada dia da semana.
+ *
+ * @since 2.0.0
+ * @updated 2.7.0 - Adicionado versaoJornadaId para versionamento
  */
 @Entity(
     tableName = "horarios_dia_semana",
@@ -20,37 +23,36 @@ import java.time.LocalTime
             parentColumns = ["id"],
             childColumns = ["empregoId"],
             onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = VersaoJornadaEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["versaoJornadaId"],
+            onDelete = ForeignKey.CASCADE
         )
     ],
     indices = [
-        Index(value = ["empregoId", "diaSemana"], unique = true)
+        Index(value = ["empregoId"]),
+        Index(value = ["versaoJornadaId"]),
+        Index(value = ["versaoJornadaId", "diaSemana"], unique = true)
     ]
 )
 data class HorarioDiaSemanaEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val empregoId: Long,
+    val versaoJornadaId: Long? = null,
     val diaSemana: DiaSemana,
     val ativo: Boolean = true,
-    
-    // CARGA HORÁRIA
     val cargaHorariaMinutos: Int = 492,
-    
-    // HORÁRIOS IDEAIS
     val entradaIdeal: LocalTime? = null,
     val saidaIntervaloIdeal: LocalTime? = null,
     val voltaIntervaloIdeal: LocalTime? = null,
     val saidaIdeal: LocalTime? = null,
-    
-    // INTERVALO
     val intervaloMinimoMinutos: Int = 60,
     val toleranciaIntervaloMaisMinutos: Int = 0,
-
-    // TOLERÂNCIAS ESPECÍFICAS
     val toleranciaEntradaMinutos: Int? = null,
     val toleranciaSaidaMinutos: Int? = null,
-    
-    // AUDITORIA
     val criadoEm: LocalDateTime = LocalDateTime.now(),
     val atualizadoEm: LocalDateTime = LocalDateTime.now()
 )
@@ -59,6 +61,7 @@ fun HorarioDiaSemanaEntity.toDomain(): br.com.tlmacedo.meuponto.domain.model.Hor
     br.com.tlmacedo.meuponto.domain.model.HorarioDiaSemana(
         id = id,
         empregoId = empregoId,
+        versaoJornadaId = versaoJornadaId,
         diaSemana = diaSemana,
         ativo = ativo,
         cargaHorariaMinutos = cargaHorariaMinutos,
@@ -78,6 +81,7 @@ fun br.com.tlmacedo.meuponto.domain.model.HorarioDiaSemana.toEntity(): HorarioDi
     HorarioDiaSemanaEntity(
         id = id,
         empregoId = empregoId,
+        versaoJornadaId = versaoJornadaId,
         diaSemana = diaSemana,
         ativo = ativo,
         cargaHorariaMinutos = cargaHorariaMinutos,

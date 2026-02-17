@@ -13,6 +13,7 @@ import br.com.tlmacedo.meuponto.data.local.database.dao.FechamentoPeriodoDao
 import br.com.tlmacedo.meuponto.data.local.database.dao.HorarioDiaSemanaDao
 import br.com.tlmacedo.meuponto.data.local.database.dao.MarcadorDao
 import br.com.tlmacedo.meuponto.data.local.database.dao.PontoDao
+import br.com.tlmacedo.meuponto.data.local.database.dao.VersaoJornadaDao
 import br.com.tlmacedo.meuponto.data.local.database.entity.AjusteSaldoEntity
 import br.com.tlmacedo.meuponto.data.local.database.entity.AuditLogEntity
 import br.com.tlmacedo.meuponto.data.local.database.entity.ConfiguracaoEmpregoEntity
@@ -21,6 +22,7 @@ import br.com.tlmacedo.meuponto.data.local.database.entity.FechamentoPeriodoEnti
 import br.com.tlmacedo.meuponto.data.local.database.entity.HorarioDiaSemanaEntity
 import br.com.tlmacedo.meuponto.data.local.database.entity.MarcadorEntity
 import br.com.tlmacedo.meuponto.data.local.database.entity.PontoEntity
+import br.com.tlmacedo.meuponto.data.local.database.entity.VersaoJornadaEntity
 
 /**
  * Classe principal do banco de dados Room.
@@ -34,12 +36,13 @@ import br.com.tlmacedo.meuponto.data.local.database.entity.PontoEntity
         EmpregoEntity::class,
         ConfiguracaoEmpregoEntity::class,
         HorarioDiaSemanaEntity::class,
+        VersaoJornadaEntity::class,  // NOVA
         AjusteSaldoEntity::class,
         FechamentoPeriodoEntity::class,
         MarcadorEntity::class,
         AuditLogEntity::class
     ],
-    version = 9,
+    version = 10,  // ATUALIZAR DE 9 PARA 10
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -49,11 +52,11 @@ abstract class MeuPontoDatabase : RoomDatabase() {
     abstract fun empregoDao(): EmpregoDao
     abstract fun configuracaoEmpregoDao(): ConfiguracaoEmpregoDao
     abstract fun horarioDiaSemanaDao(): HorarioDiaSemanaDao
+    abstract fun versaoJornadaDao(): VersaoJornadaDao  // NOVO
     abstract fun ajusteSaldoDao(): AjusteSaldoDao
     abstract fun fechamentoPeriodoDao(): FechamentoPeriodoDao
     abstract fun marcadorDao(): MarcadorDao
     abstract fun auditLogDao(): AuditLogDao
-
     companion object {
         const val DATABASE_NAME = "meuponto.db"
     }

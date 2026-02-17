@@ -49,4 +49,10 @@ sealed interface HomeUiEvent {
      * @property nomeEmprego Nome do novo emprego ativo
      */
     data class EmpregoTrocado(val nomeEmprego: String) : HomeUiEvent
+
+    /** Navega para a tela de criar novo emprego */
+    data object NavegarParaNovoEmprego : HomeUiEvent
+
+    /** Navega para a tela de editar emprego */
+    data class NavegarParaEditarEmprego(val empregoId: Long) : HomeUiEvent
 }

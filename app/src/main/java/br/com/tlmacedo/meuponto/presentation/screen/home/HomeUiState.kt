@@ -19,6 +19,7 @@ import java.util.Locale
  * @since 2.0.0
  * @updated 2.5.0 - Adicionado showDatePicker, corrigido formato de data
  * @updated 2.6.0 - Flags para controle de registro por tipo de dia
+ * @updated 2.7.0 - Adicionado showEmpregoMenu para menu de opções do emprego
  */
 data class HomeUiState(
     val dataSelecionada: LocalDate = LocalDate.now(),
@@ -34,6 +35,7 @@ data class HomeUiState(
     val showTimePickerDialog: Boolean = false,
     val showDeleteConfirmDialog: Boolean = false,
     val showEmpregoSelector: Boolean = false,
+    val showEmpregoMenu: Boolean = false,
     val showDatePicker: Boolean = false,
     val pontoParaExcluir: Ponto? = null,
     val erro: String? = null

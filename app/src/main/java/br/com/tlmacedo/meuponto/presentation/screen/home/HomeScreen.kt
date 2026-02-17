@@ -78,7 +78,9 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToHistory: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
-    onNavigateToEditPonto: (Long) -> Unit = {}
+    onNavigateToEditPonto: (Long) -> Unit = {},
+    onNavigateToNovoEmprego: () -> Unit = {},
+    onNavigateToEditarEmprego: (Long) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -104,6 +106,12 @@ fun HomeScreen(
                 }
                 is HomeUiEvent.EmpregoTrocado -> {
                     snackbarHostState.showSnackbar("Emprego alterado: ${event.nomeEmprego}")
+                }
+                is HomeUiEvent.NavegarParaNovoEmprego -> {
+                    onNavigateToNovoEmprego()
+                }
+                is HomeUiEvent.NavegarParaEditarEmprego -> {
+                    onNavigateToEditarEmprego(event.empregoId)
                 }
             }
         }
@@ -229,12 +237,34 @@ internal fun HomeContent(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = modifier.fillMaxSize()
     ) {
-        // Seletor de Emprego (se houver múltiplos)
+        // Seletor de Emprego com suporte a long press
         item {
             EmpregoSelectorChip(
                 empregoAtivo = uiState.empregoAtivo,
                 temMultiplosEmpregos = uiState.temMultiplosEmpregos,
-                onClick = { onAction(HomeAction.AbrirSeletorEmprego) }
+                showMenu = uiState.showEmpregoMenu,
+                onClick = {
+                    // Sem emprego: navegar para criar
+                    // Com emprego e múltiplos: abrir seletor
+                    // Com emprego único: nada (usar long press)
+                    if (uiState.empregoAtivo == null) {
+                        onAction(HomeAction.NavegarParaNovoEmprego)
+                    } else if (uiState.temMultiplosEmpregos) {
+                        onAction(HomeAction.AbrirSeletorEmprego)
+                    }
+                },
+                onLongClick = {
+                    onAction(HomeAction.AbrirMenuEmprego)
+                },
+                onNovoEmprego = {
+                    onAction(HomeAction.NavegarParaNovoEmprego)
+                },
+                onEditarEmprego = {
+                    onAction(HomeAction.NavegarParaEditarEmprego)
+                },
+                onDismissMenu = {
+                    onAction(HomeAction.FecharMenuEmprego)
+                }
             )
         }
 

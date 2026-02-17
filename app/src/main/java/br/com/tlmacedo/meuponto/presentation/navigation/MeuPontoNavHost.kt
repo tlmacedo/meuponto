@@ -65,6 +65,12 @@ fun MeuPontoNavHost(
                     },
                     onNavigateToEditPonto = { pontoId ->
                         navController.navigate(MeuPontoDestinations.editPonto(pontoId))
+                    },
+                    onNavigateToNovoEmprego = {
+                        navController.navigate(MeuPontoDestinations.editarEmprego(-1L))
+                    },
+                    onNavigateToEditarEmprego = { empregoId ->
+                        navController.navigate(MeuPontoDestinations.editarEmprego(empregoId))
                     }
                 )
             }

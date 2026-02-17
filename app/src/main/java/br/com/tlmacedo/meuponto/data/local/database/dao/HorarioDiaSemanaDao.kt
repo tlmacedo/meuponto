@@ -8,16 +8,15 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import br.com.tlmacedo.meuponto.data.local.database.entity.HorarioDiaSemanaEntity
+import br.com.tlmacedo.meuponto.domain.model.DiaSemana
 import kotlinx.coroutines.flow.Flow
 
 /**
  * DAO para operações de banco de dados relacionadas aos Horários por Dia da Semana.
- * 
- * Gerencia a configuração de horários ideais, carga horária e tolerâncias
- * de intervalo para cada dia da semana de um emprego.
  *
  * @author Thiago
  * @since 2.0.0
+ * @updated 2.7.0 - Padronizado para usar DiaSemana (enum) em todas as queries
  */
 @Dao
 interface HorarioDiaSemanaDao {
@@ -45,14 +44,27 @@ interface HorarioDiaSemanaDao {
     @Query("SELECT * FROM horarios_dia_semana WHERE empregoId = :empregoId ORDER BY diaSemana")
     fun listarPorEmprego(empregoId: Long): Flow<List<HorarioDiaSemanaEntity>>
 
-    @Query("SELECT * FROM horarios_dia_semana WHERE empregoId = :empregoId ORDER BY diaSemana")
+    @Query("SELECT * FROM horarios_dia_semana WHERE empregoId = :empregoId")
     suspend fun buscarPorEmprego(empregoId: Long): List<HorarioDiaSemanaEntity>
 
     @Query("SELECT * FROM horarios_dia_semana WHERE empregoId = :empregoId AND diaSemana = :diaSemana")
-    suspend fun buscarPorEmpregoEDia(empregoId: Long, diaSemana: String): HorarioDiaSemanaEntity?
+    suspend fun buscarPorEmpregoEDia(empregoId: Long, diaSemana: DiaSemana): HorarioDiaSemanaEntity?
 
     @Query("SELECT * FROM horarios_dia_semana WHERE id = :id")
     suspend fun buscarPorId(id: Long): HorarioDiaSemanaEntity?
+
+    // ========================================================================
+    // Consultas por Versão de Jornada
+    // ========================================================================
+
+    @Query("SELECT * FROM horarios_dia_semana WHERE versaoJornadaId = :versaoJornadaId ORDER BY diaSemana")
+    suspend fun buscarPorVersaoJornada(versaoJornadaId: Long): List<HorarioDiaSemanaEntity>
+
+    @Query("SELECT * FROM horarios_dia_semana WHERE versaoJornadaId = :versaoJornadaId ORDER BY diaSemana")
+    fun observarPorVersaoJornada(versaoJornadaId: Long): Flow<List<HorarioDiaSemanaEntity>>
+
+    @Query("SELECT * FROM horarios_dia_semana WHERE versaoJornadaId = :versaoJornadaId AND diaSemana = :diaSemana")
+    suspend fun buscarPorVersaoEDia(versaoJornadaId: Long, diaSemana: DiaSemana): HorarioDiaSemanaEntity?
 
     // ========================================================================
     // Consultas de dias ativos
@@ -71,6 +83,9 @@ interface HorarioDiaSemanaDao {
     @Query("DELETE FROM horarios_dia_semana WHERE empregoId = :empregoId")
     suspend fun excluirPorEmprego(empregoId: Long)
 
+    @Query("DELETE FROM horarios_dia_semana WHERE versaoJornadaId = :versaoJornadaId")
+    suspend fun excluirPorVersaoJornada(versaoJornadaId: Long)
+
     // ========================================================================
     // Consultas auxiliares e cálculos
     // ========================================================================
@@ -82,8 +97,8 @@ interface HorarioDiaSemanaDao {
     suspend fun somarCargaHorariaSemanal(empregoId: Long): Int
 
     @Query("SELECT cargaHorariaMinutos FROM horarios_dia_semana WHERE empregoId = :empregoId AND diaSemana = :diaSemana AND ativo = 1")
-    suspend fun buscarCargaHorariaDia(empregoId: Long, diaSemana: String): Int?
+    suspend fun buscarCargaHorariaDia(empregoId: Long, diaSemana: DiaSemana): Int?
 
     @Query("SELECT ativo FROM horarios_dia_semana WHERE empregoId = :empregoId AND diaSemana = :diaSemana")
-    suspend fun isDiaAtivo(empregoId: Long, diaSemana: String): Boolean?
+    suspend fun isDiaAtivo(empregoId: Long, diaSemana: DiaSemana): Boolean?
 }

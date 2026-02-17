@@ -153,6 +153,11 @@ interface PontoRepository {
     fun observarPorEmprego(empregoId: Long): Flow<List<Ponto>>
 
     /**
+     * Busca a primeira data com registro de ponto para um emprego.
+     */
+    suspend fun buscarPrimeiraData(empregoId: Long): LocalDate?
+
+    /**
      * Observa os pontos de um emprego em uma data específica.
      *
      * @param empregoId ID do emprego

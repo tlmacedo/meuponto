@@ -19,6 +19,7 @@ import javax.inject.Singleton
  *
  * @author Thiago
  * @since 2.0.0
+ * @updated 2.7.0 - Corrigido para passar DiaSemana diretamente ao DAO
  */
 @Singleton
 class HorarioDiaSemanaRepositoryImpl @Inject constructor(
@@ -62,7 +63,7 @@ class HorarioDiaSemanaRepositoryImpl @Inject constructor(
     }
 
     override suspend fun buscarPorEmpregoEDia(empregoId: Long, diaSemana: DiaSemana): HorarioDiaSemana? {
-        return horarioDiaSemanaDao.buscarPorEmpregoEDia(empregoId, diaSemana.name)?.toDomain()
+        return horarioDiaSemanaDao.buscarPorEmpregoEDia(empregoId, diaSemana)?.toDomain()
     }
 
     override suspend fun buscarDiasAtivos(empregoId: Long): List<HorarioDiaSemana> {
@@ -78,11 +79,11 @@ class HorarioDiaSemanaRepositoryImpl @Inject constructor(
     }
 
     override suspend fun buscarCargaHorariaDia(empregoId: Long, diaSemana: DiaSemana): Int? {
-        return horarioDiaSemanaDao.buscarCargaHorariaDia(empregoId, diaSemana.name)
+        return horarioDiaSemanaDao.buscarCargaHorariaDia(empregoId, diaSemana)
     }
 
     override suspend fun isDiaAtivo(empregoId: Long, diaSemana: DiaSemana): Boolean {
-        return horarioDiaSemanaDao.isDiaAtivo(empregoId, diaSemana.name) ?: false
+        return horarioDiaSemanaDao.isDiaAtivo(empregoId, diaSemana) ?: false
     }
 
     // ========================================================================

@@ -12,6 +12,7 @@ import java.time.LocalTime
  * @author Thiago
  * @since 2.0.0
  * @updated 2.5.0 - Adicionadas ações para DatePicker
+ * @updated 2.7.0 - Adicionadas ações para navegação de emprego (criar/editar)
  */
 sealed interface HomeAction {
 
@@ -54,6 +55,18 @@ sealed interface HomeAction {
     data object AbrirSeletorEmprego : HomeAction
     data object FecharSeletorEmprego : HomeAction
     data class SelecionarEmprego(val emprego: Emprego) : HomeAction
+
+    /** Navega para criar um novo emprego */
+    data object NavegarParaNovoEmprego : HomeAction
+
+    /** Navega para editar o emprego ativo */
+    data object NavegarParaEditarEmprego : HomeAction
+
+    /** Abre o menu de opções do emprego (long press) */
+    data object AbrirMenuEmprego : HomeAction
+
+    /** Fecha o menu de opções do emprego */
+    data object FecharMenuEmprego : HomeAction
 
     // ══════════════════════════════════════════════════════════════════════
     // AÇÕES DE NAVEGAÇÃO
