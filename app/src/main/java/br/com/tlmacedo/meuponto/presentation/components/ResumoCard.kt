@@ -1,11 +1,6 @@
 // Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/presentation/components/ResumoCard.kt
 package br.com.tlmacedo.meuponto.presentation.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,7 +19,11 @@ import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.BeachAccess
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.EventBusy
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Schedule
@@ -32,7 +31,6 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.WorkOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -42,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,21 +48,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.tlmacedo.meuponto.domain.model.BancoHoras
 import br.com.tlmacedo.meuponto.domain.model.ResumoDia
+import br.com.tlmacedo.meuponto.domain.model.TipoDiaEspecial
 import br.com.tlmacedo.meuponto.domain.model.VersaoJornada
 import br.com.tlmacedo.meuponto.presentation.theme.Error
-import br.com.tlmacedo.meuponto.presentation.theme.ErrorLight
-import br.com.tlmacedo.meuponto.presentation.theme.Info
-import br.com.tlmacedo.meuponto.presentation.theme.InfoLight
 import br.com.tlmacedo.meuponto.presentation.theme.Success
-import br.com.tlmacedo.meuponto.presentation.theme.SuccessLight
 import java.time.LocalDateTime
 import java.time.LocalTime
 import kotlin.math.abs
 
 // Cores do gradiente moderno
-private val GradientStart = Color(0xFF2D3748) // Cinza escuro azulado
-private val GradientEnd = Color(0xFF1A202C)   // Cinza mais escuro
-private val GradientAccent = Color(0xFF4A5568) // Cinza médio para detalhes
+private val GradientStart = Color(0xFF2D3748)
+private val GradientEnd = Color(0xFF1A202C)
 
 /**
  * Card compacto de resumo do dia com gradiente moderno e cores semânticas.
@@ -72,19 +67,11 @@ private val GradientAccent = Color(0xFF4A5568) // Cinza médio para detalhes
  * - Gradiente cinza escuro moderno com tons azulados
  * - Alto contraste para textos brancos e cores semânticas
  * - Visual sofisticado e profissional
- *
- * CÁLCULO EM TEMPO REAL:
- * - Quando há turno aberto, os valores são calculados incluindo o tempo em andamento
- * - O valor atualiza automaticamente junto com o relógio do HomeViewModel
- *
- * Cores dinâmicas:
- * - **Trabalhado**: branco (em andamento ou < jornada) → verde (>= jornada)
- * - **Saldo Dia**: verde/↑ (positivo) | branco/→ (zero) | vermelho/↓ (negativo)
- * - **Banco**: verde (positivo) | branco/cinza (zero) | vermelho (negativo)
+ * - Textos dinâmicos conforme tipo de dia (Férias, Atestado, etc.)
  *
  * @author Thiago
  * @since 1.0.0
- * @updated 4.3.0 - Gradiente cinza moderno com melhor contraste
+ * @updated 4.4.0 - Textos dinâmicos para dias especiais (férias, atestado, folga)
  */
 @Composable
 fun ResumoCard(
@@ -144,15 +131,24 @@ fun ResumoCard(
                             color = textoPrincipal
                         )
                         Spacer(modifier = Modifier.height(2.dp))
-                        // Info jornada
-                        if (resumoDia.isFeriado) {
-                            FeriadoJornadaInfo(corTexto = textoTerciario)
-                        } else {
-                            JornadaVersaoInfoCompact(
-                                cargaHorariaFormatada = resumoDia.cargaHorariaDiariaFormatada,
-                                versaoJornada = versaoJornada,
-                                corTexto = textoTerciario
-                            )
+                        // Info jornada - dinâmica conforme tipo de dia
+                        when {
+                            resumoDia.tipoDiaEspecial != TipoDiaEspecial.NORMAL -> {
+                                DiaEspecialJornadaInfo(
+                                    tipoDiaEspecial = resumoDia.tipoDiaEspecial,
+                                    corTexto = textoTerciario
+                                )
+                            }
+                            resumoDia.isFeriado -> {
+                                FeriadoJornadaInfo(corTexto = textoTerciario)
+                            }
+                            else -> {
+                                JornadaVersaoInfoCompact(
+                                    cargaHorariaFormatada = resumoDia.cargaHorariaDiariaFormatada,
+                                    versaoJornada = versaoJornada,
+                                    corTexto = textoTerciario
+                                )
+                            }
                         }
                     }
 
@@ -163,6 +159,11 @@ fun ResumoCard(
                             texto = "Hora extra",
                             icone = Icons.Default.Star,
                             corIcone = Success
+                        )
+                        resumoDia.tipoDiaEspecial != TipoDiaEspecial.NORMAL -> StatusBadgeCompact(
+                            texto = resumoDia.tipoDiaEspecial.descricaoCurta,
+                            icone = resumoDia.tipoDiaEspecial.getIcon(),
+                            corIcone = resumoDia.tipoDiaEspecial.getCor()
                         )
                     }
                 }
@@ -184,8 +185,8 @@ fun ResumoCard(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    ResumoItemTrabalhado(
-                        titulo = "Trabalhado",
+                    ResumoItemPrincipal(
+                        tipoDiaEspecial = resumoDia.tipoDiaEspecial,
                         minutosTrabalhados = minutosTrabalhados,
                         minutosJornada = resumoDia.cargaHorariaEfetivaMinutos,
                         isFeriado = resumoDia.isFeriado,
@@ -297,12 +298,41 @@ private fun FeriadoJornadaInfo(
 }
 
 /**
+ * Info de jornada para dias especiais (férias, atestado, folga, etc.).
+ */
+@Composable
+private fun DiaEspecialJornadaInfo(
+    tipoDiaEspecial: TipoDiaEspecial,
+    corTexto: Color,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+    ) {
+        Icon(
+            imageVector = tipoDiaEspecial.getIcon(),
+            contentDescription = null,
+            tint = tipoDiaEspecial.getCor(),
+            modifier = Modifier.size(14.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = "${tipoDiaEspecial.descricao} • Sem jornada obrigatória",
+            style = MaterialTheme.typography.bodySmall,
+            fontSize = 12.sp,
+            color = corTexto
+        )
+    }
+}
+
+/**
  * Badge de status compacto.
  */
 @Composable
 private fun StatusBadgeCompact(
     texto: String,
-    icone: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.PlayCircle,
+    icone: ImageVector = Icons.Default.PlayCircle,
     corIcone: Color = Success,
     modifier: Modifier = Modifier
 ) {
@@ -331,11 +361,20 @@ private fun StatusBadgeCompact(
 }
 
 /**
- * Item de resumo para Trabalhado.
+ * Item de resumo principal - dinâmico conforme tipo de dia.
+ *
+ * - Dia normal: "Trabalhado" com ícone de relógio
+ * - Férias: "Férias" com ícone de praia
+ * - Atestado: "Atestado" com ícone de hospital
+ * - Folga: "Folga" com ícone de casa
+ * - Falta: "Falta" com ícone de evento cancelado
+ */
+/**
+ * Item de resumo principal - dinâmico conforme tipo de dia.
  */
 @Composable
-private fun ResumoItemTrabalhado(
-    titulo: String,
+private fun ResumoItemPrincipal(
+    tipoDiaEspecial: TipoDiaEspecial,
     minutosTrabalhados: Int,
     minutosJornada: Int,
     isFeriado: Boolean = false,
@@ -343,6 +382,22 @@ private fun ResumoItemTrabalhado(
     corTitulo: Color,
     modifier: Modifier = Modifier
 ) {
+    // Configuração dinâmica baseada no tipo de dia
+    val (titulo, icone, corIconeEspecial) = when (tipoDiaEspecial) {
+        TipoDiaEspecial.FERIAS -> Triple("Férias", Icons.Default.BeachAccess, Color(0xFF00BCD4))
+        TipoDiaEspecial.ATESTADO -> Triple("Atestado", Icons.Default.LocalHospital, Color(0xFFEF5350))
+        TipoDiaEspecial.FOLGA -> Triple("Folga", Icons.Default.Home, Color(0xFF66BB6A))
+        TipoDiaEspecial.FALTA_JUSTIFICADA -> Triple("Falta Just.", Icons.Default.EventBusy, Color(0xFF42A5F5))
+        TipoDiaEspecial.FALTA_INJUSTIFICADA -> Triple("Falta", Icons.Default.EventBusy, Color(0xFFEF5350))
+        TipoDiaEspecial.FERIADO -> Triple("Feriado", Icons.Outlined.WorkOff, Color(0xFF4CAF50))
+        TipoDiaEspecial.PONTE -> Triple("Ponte", Icons.Outlined.WorkOff, Color(0xFF9C27B0))
+        TipoDiaEspecial.FACULTATIVO -> Triple("Facultativo", Icons.Outlined.WorkOff, Color(0xFFE91E63))
+        TipoDiaEspecial.NORMAL -> Triple("Trabalhado", Icons.Default.AccessTime, null)
+    }
+
+    // Para dias especiais (não trabalhados), mostrar de forma diferente
+    val isDiaEspecialNaoTrabalhado = tipoDiaEspecial != TipoDiaEspecial.NORMAL
+
     val atingiuJornada = minutosTrabalhados >= minutosJornada
     val temTrabalho = minutosTrabalhados > 0
 
@@ -351,6 +406,11 @@ private fun ResumoItemTrabalhado(
     val corFundoIcone: Color
 
     when {
+        isDiaEspecialNaoTrabalhado -> {
+            corValor = corIconeEspecial ?: Color.White
+            corIcone = corIconeEspecial ?: Color.White.copy(alpha = 0.8f)
+            corFundoIcone = (corIconeEspecial ?: Color.White).copy(alpha = 0.15f)
+        }
         isFeriado && temTrabalho -> {
             corValor = Success
             corIcone = Success
@@ -368,7 +428,12 @@ private fun ResumoItemTrabalhado(
         }
     }
 
-    val valorFormatado = formatarDuracaoCompacta(minutosTrabalhados)
+    // Valor formatado - para dias especiais mostra texto diferente
+    val valorFormatado = if (isDiaEspecialNaoTrabalhado && minutosTrabalhados == 0) {
+        "—"
+    } else {
+        formatarDuracaoCompacta(minutosTrabalhados)
+    }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -383,7 +448,7 @@ private fun ResumoItemTrabalhado(
                 .background(corFundoIcone)
         ) {
             Icon(
-                imageVector = Icons.Default.AccessTime,
+                imageVector = icone,
                 contentDescription = titulo,
                 tint = corIcone,
                 modifier = Modifier.size(24.dp)
@@ -604,6 +669,56 @@ private fun ResumoItemBanco(
         }
     }
 }
+
+// ============================================================================
+// Extensões para TipoDiaEspecial
+// ============================================================================
+
+/**
+ * Retorna o ícone apropriado para cada tipo de dia especial.
+ */
+private fun TipoDiaEspecial.getIcon(): ImageVector = when (this) {
+    TipoDiaEspecial.FERIAS -> Icons.Default.BeachAccess
+    TipoDiaEspecial.ATESTADO -> Icons.Default.LocalHospital
+    TipoDiaEspecial.FOLGA -> Icons.Default.Home
+    TipoDiaEspecial.FALTA_JUSTIFICADA -> Icons.Default.EventBusy
+    TipoDiaEspecial.FALTA_INJUSTIFICADA -> Icons.Default.EventBusy
+    TipoDiaEspecial.FERIADO -> Icons.Outlined.WorkOff
+    TipoDiaEspecial.PONTE -> Icons.Outlined.WorkOff
+    TipoDiaEspecial.FACULTATIVO -> Icons.Outlined.WorkOff
+    TipoDiaEspecial.NORMAL -> Icons.Default.AccessTime
+}
+
+/**
+ * Retorna a cor apropriada para cada tipo de dia especial.
+ */
+private fun TipoDiaEspecial.getCor(): Color = when (this) {
+    TipoDiaEspecial.FERIAS -> Color(0xFF00BCD4)
+    TipoDiaEspecial.ATESTADO -> Color(0xFFEF5350)
+    TipoDiaEspecial.FOLGA -> Color(0xFF66BB6A)
+    TipoDiaEspecial.FALTA_JUSTIFICADA -> Color(0xFF42A5F5)
+    TipoDiaEspecial.FALTA_INJUSTIFICADA -> Color(0xFFEF5350)
+    TipoDiaEspecial.FERIADO -> Color(0xFF4CAF50)
+    TipoDiaEspecial.PONTE -> Color(0xFF9C27B0)
+    TipoDiaEspecial.FACULTATIVO -> Color(0xFFE91E63)
+    TipoDiaEspecial.NORMAL -> Color.White
+}
+
+/**
+ * Retorna descrição curta para badge.
+ */
+private val TipoDiaEspecial.descricaoCurta: String
+    get() = when (this) {
+        TipoDiaEspecial.FERIAS -> "Férias"
+        TipoDiaEspecial.ATESTADO -> "Atestado"
+        TipoDiaEspecial.FOLGA -> "Folga"
+        TipoDiaEspecial.FALTA_JUSTIFICADA -> "Falta Just."
+        TipoDiaEspecial.FALTA_INJUSTIFICADA -> "Falta"
+        TipoDiaEspecial.FERIADO -> "Feriado"
+        TipoDiaEspecial.PONTE -> "Ponte"
+        TipoDiaEspecial.FACULTATIVO -> "Facultativo"
+        TipoDiaEspecial.NORMAL -> ""
+    }
 
 /**
  * Formata duração (sem sinal) para exibição compacta.

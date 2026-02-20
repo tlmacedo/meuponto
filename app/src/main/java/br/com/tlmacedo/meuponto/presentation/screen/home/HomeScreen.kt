@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.tlmacedo.meuponto.domain.model.TipoPonto
+import br.com.tlmacedo.meuponto.presentation.components.AusenciaBanner
 import br.com.tlmacedo.meuponto.presentation.components.DateNavigator
 import br.com.tlmacedo.meuponto.presentation.components.EmpregoSelectorBottomSheet
 import br.com.tlmacedo.meuponto.presentation.components.EmpregoSelectorChip
@@ -320,6 +321,17 @@ internal fun HomeContent(
                 FeriadoBanner(
                     feriados = uiState.feriadosDoDia
                 )
+            }
+        }
+
+        // Banner de Ausência (férias, atestado, folga, etc.)
+        if (uiState.temAusencia) {
+            item {
+                uiState.ausenciaDoDia?.let { ausencia ->
+                    AusenciaBanner(
+                        ausencia = ausencia
+                    )
+                }
             }
         }
 
