@@ -13,6 +13,7 @@ import java.time.LocalTime
  * @since 2.0.0
  * @updated 2.5.0 - Adicionadas ações para DatePicker
  * @updated 2.7.0 - Adicionadas ações para navegação de emprego (criar/editar)
+ * @updated 3.7.0 - Adicionadas ações para NSR dialog
  */
 sealed interface HomeAction {
 
@@ -24,6 +25,19 @@ sealed interface HomeAction {
     data object AbrirTimePickerDialog : HomeAction
     data object FecharTimePickerDialog : HomeAction
     data class RegistrarPontoManual(val hora: LocalTime) : HomeAction
+
+    // ══════════════════════════════════════════════════════════════════════
+    // AÇÕES DE NSR
+    // ══════════════════════════════════════════════════════════════════════
+
+    /** Atualiza o valor do NSR no dialog */
+    data class AtualizarNsr(val nsr: String) : HomeAction
+
+    /** Confirma o registro do ponto com NSR */
+    data object ConfirmarRegistroComNsr : HomeAction
+
+    /** Cancela o dialog de NSR */
+    data object CancelarNsrDialog : HomeAction
 
     // ══════════════════════════════════════════════════════════════════════
     // AÇÕES DE EXCLUSÃO DE PONTO

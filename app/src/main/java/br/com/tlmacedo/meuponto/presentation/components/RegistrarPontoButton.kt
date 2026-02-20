@@ -10,7 +10,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,6 +26,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -43,9 +43,9 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 /**
- * Botão principal para registrar ponto no dia atual.
+ * Botão compacto para registrar ponto no dia atual.
  *
- * Exibe um botão grande com horário atual e opção de registro manual.
+ * Layout horizontal com horário atual e opção de registro manual lado a lado.
  * Usado apenas para o dia de HOJE.
  *
  * @param proximoTipo Tipo do próximo ponto (ENTRADA ou SAIDA)
@@ -56,6 +56,7 @@ import java.time.format.DateTimeFormatter
  *
  * @author Thiago
  * @since 1.0.0
+ * @updated 3.0.0 - Layout compactado horizontal
  */
 @Composable
 fun RegistrarPontoButton(
@@ -74,7 +75,7 @@ fun RegistrarPontoButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1f,
+        targetValue = if (isPressed) 0.97f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
@@ -86,89 +87,77 @@ fun RegistrarPontoButton(
         colors = CardDefaults.cardColors(
             containerColor = corPrincipal
         ),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(16.dp),
         modifier = modifier
             .fillMaxWidth()
             .scale(scale)
-            .shadow(8.dp, RoundedCornerShape(24.dp))
+            .shadow(4.dp, RoundedCornerShape(16.dp))
     ) {
-        Column(
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
             // Área principal clicável - registro automático
-            Box(
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .weight(1f)
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null,
                         onClick = onRegistrarAgora
                     )
-                    .padding(24.dp)
+                    .padding(vertical = 16.dp, horizontal = 12.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        imageVector = icone,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text(
-                            text = texto,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Text(
-                            text = horaAtual.format(formatadorHora),
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
-                        )
-                    }
-                }
+                Icon(
+                    imageVector = icone,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = texto,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = horaAtual.format(formatadorHora),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                )
             }
+
+            // Divisor vertical
+            VerticalDivider(
+                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.3f),
+                modifier = Modifier.padding(vertical = 12.dp)
+            )
 
             // Botão para registro manual
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.15f)
-                    )
                     .clickable(onClick = onRegistrarManual)
-                    .padding(12.dp),
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Schedule,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Informar outro horário",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Schedule,
+                    contentDescription = "Informar outro horário",
+                    tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
+                    modifier = Modifier.size(22.dp)
+                )
             }
         }
     }
 }
 
 /**
- * Botão para registrar ponto manual em dias anteriores.
+ * Botão compacto para registrar ponto manual em dias anteriores.
  *
  * Exibe apenas a opção de informar horário, sem registro automático.
  * Usado para dias PASSADOS.
@@ -180,6 +169,7 @@ fun RegistrarPontoButton(
  *
  * @author Thiago
  * @since 2.6.0
+ * @updated 3.0.0 - Layout compactado
  */
 @Composable
 fun RegistrarPontoManualButton(
@@ -195,7 +185,7 @@ fun RegistrarPontoManualButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1f,
+        targetValue = if (isPressed) 0.97f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
@@ -207,13 +197,15 @@ fun RegistrarPontoManualButton(
         colors = CardDefaults.cardColors(
             containerColor = corPrincipal
         ),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         modifier = modifier
             .fillMaxWidth()
             .scale(scale)
-            .shadow(4.dp, RoundedCornerShape(20.dp))
+            .shadow(4.dp, RoundedCornerShape(16.dp))
     ) {
-        Box(
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(
@@ -221,45 +213,34 @@ fun RegistrarPontoManualButton(
                     indication = null,
                     onClick = onRegistrarManual
                 )
-                .padding(20.dp)
+                .padding(vertical = 14.dp, horizontal = 16.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = icone,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(28.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Registrar ${proximoTipo.descricao}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Schedule,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Informar horário",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
-                        )
-                    }
-                }
-            }
+            Icon(
+                imageVector = icone,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(22.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = "Registrar ${proximoTipo.descricao}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimary
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                imageVector = Icons.Default.Schedule,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "Informar horário",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+            )
         }
     }
 }

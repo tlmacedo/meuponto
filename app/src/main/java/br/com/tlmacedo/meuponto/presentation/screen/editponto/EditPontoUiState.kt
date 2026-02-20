@@ -2,6 +2,7 @@
 package br.com.tlmacedo.meuponto.presentation.screen.editponto
 
 import br.com.tlmacedo.meuponto.domain.model.ConfiguracaoEmprego
+import br.com.tlmacedo.meuponto.domain.model.MotivoEdicao
 import br.com.tlmacedo.meuponto.domain.model.Ponto
 import br.com.tlmacedo.meuponto.domain.model.TipoNsr
 import br.com.tlmacedo.meuponto.domain.model.TipoPonto
@@ -33,7 +34,11 @@ data class EditPontoUiState(
     val longitude: Double? = null,
     val endereco: String = "",
     val observacao: String = "",
-    val motivo: String = "",
+
+    // Motivo com dropdown
+    val motivoSelecionado: MotivoEdicao = MotivoEdicao.NENHUM,
+    val motivoDetalhes: String = "",
+    val showMotivoDropdown: Boolean = false,
 
     // Configurações do emprego
     val configuracao: ConfiguracaoEmprego? = null,
@@ -97,11 +102,48 @@ data class EditPontoUiState(
         get() = latitude != null && longitude != null
 
     // ========================================================================
+    // Motivo - Lógica do dropdown
+    // ========================================================================
+
+    /**
+     * Motivo final que será salvo (combinação do selecionado + detalhes).
+     */
+    val motivo: String
+        get() = when {
+            motivoSelecionado == MotivoEdicao.NENHUM -> ""
+            motivoSelecionado == MotivoEdicao.OUTRO -> motivoDetalhes.trim()
+            motivoSelecionado.requerDetalhes && motivoDetalhes.isNotBlank() ->
+                "${motivoSelecionado.descricao}: ${motivoDetalhes.trim()}"
+            else -> motivoSelecionado.descricao
+        }
+
+    /**
+     * Indica se o campo de detalhes deve ser exibido.
+     */
+    val mostrarCampoDetalhes: Boolean
+        get() = motivoSelecionado.requerDetalhes && motivoSelecionado != MotivoEdicao.NENHUM
+
+    /**
+     * Texto exibido no dropdown.
+     */
+    val motivoDisplayText: String
+        get() = if (motivoSelecionado == MotivoEdicao.NENHUM) {
+            "Selecione um motivo..."
+        } else {
+            motivoSelecionado.descricao
+        }
+
+    // ========================================================================
     // Validações
     // ========================================================================
 
     val motivoValido: Boolean
-        get() = motivo.length >= 5
+        get() = when {
+            motivoSelecionado == MotivoEdicao.NENHUM -> false
+            motivoSelecionado == MotivoEdicao.OUTRO -> motivoDetalhes.trim().length >= 5
+            motivoSelecionado.requerDetalhes -> motivoDetalhes.trim().length >= 5
+            else -> true
+        }
 
     val nsrValido: Boolean
         get() = !habilitarNsr || nsr.isNotBlank()
@@ -114,8 +156,11 @@ data class EditPontoUiState(
 
     val erroMotivo: String?
         get() = when {
-            motivo.isBlank() -> "Informe o motivo da edição"
-            motivo.length < 5 -> "O motivo deve ter pelo menos 5 caracteres"
+            motivoSelecionado == MotivoEdicao.NENHUM -> "Selecione um motivo"
+            motivoSelecionado == MotivoEdicao.OUTRO && motivoDetalhes.trim().length < 5 ->
+                "Especifique o motivo (mín. 5 caracteres)"
+            motivoSelecionado.requerDetalhes && motivoDetalhes.trim().length < 5 ->
+                "Detalhe o motivo (mín. 5 caracteres)"
             else -> null
         }
 

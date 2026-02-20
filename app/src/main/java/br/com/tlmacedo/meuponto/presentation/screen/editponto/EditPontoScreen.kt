@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,6 +22,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.tlmacedo.meuponto.data.service.LocationService
 import br.com.tlmacedo.meuponto.domain.model.Localizacao
+import br.com.tlmacedo.meuponto.domain.model.MotivoEdicao
 import br.com.tlmacedo.meuponto.domain.model.TipoNsr
 import br.com.tlmacedo.meuponto.domain.model.TipoPonto
 import br.com.tlmacedo.meuponto.presentation.components.LocationPickerDialog
@@ -85,6 +87,7 @@ fun EditPontoScreen(
             locationService = locationService
         )
     }
+
     if (uiState.showTimePicker) {
         TimePickerDialog(
             titulo = "Selecionar Horário",
@@ -133,8 +136,11 @@ fun EditPontoScreen(
         DeleteConfirmDialog(
             tipoPonto = uiState.tipoPonto,
             horaFormatada = uiState.horaFormatada,
-            motivo = uiState.motivo,
-            onMotivoChange = { viewModel.onAction(EditPontoAction.AtualizarMotivo(it)) },
+            motivoSelecionado = uiState.motivoSelecionado,
+            motivoDetalhes = uiState.motivoDetalhes,
+            onSelecionarMotivo = { viewModel.onAction(EditPontoAction.SelecionarMotivo(it)) },
+            onMotivoDetalhesChange = { viewModel.onAction(EditPontoAction.AtualizarMotivoDetalhes(it)) },
+            motivoValido = uiState.motivoValido,
             onConfirm = { viewModel.onAction(EditPontoAction.ConfirmarExclusao) },
             onDismiss = { viewModel.onAction(EditPontoAction.CancelarExclusao) }
         )
@@ -181,6 +187,7 @@ fun EditPontoScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditPontoContent(
     uiState: EditPontoUiState,
@@ -398,7 +405,7 @@ private fun EditPontoContent(
             placeholder = { Text("Adicione uma observação...") },
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Default.Notes,
+                    imageVector = Icons.AutoMirrored.Filled.Notes,
                     contentDescription = null
                 )
             },
@@ -407,32 +414,114 @@ private fun EditPontoContent(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Seção: Motivo da Edição (obrigatório)
+        // Seção: Motivo da Edição (obrigatório) com Dropdown
         SectionTitle("Motivo da Edição *", required = true)
 
-        OutlinedTextField(
-            value = uiState.motivo,
-            onValueChange = { onAction(EditPontoAction.AtualizarMotivo(it)) },
-            label = { Text("Motivo") },
-            placeholder = { Text("Informe o motivo da alteração (mín. 5 caracteres)") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.EditNote,
-                    contentDescription = null
-                )
+        // Dropdown de motivos
+        ExposedDropdownMenuBox(
+            expanded = uiState.showMotivoDropdown,
+            onExpandedChange = {
+                if (it) onAction(EditPontoAction.AbrirMotivoDropdown)
+                else onAction(EditPontoAction.FecharMotivoDropdown)
             },
-            isError = uiState.motivo.isNotEmpty() && !uiState.motivoValido,
-            supportingText = {
-                if (uiState.motivo.isNotEmpty() && !uiState.motivoValido) {
-                    Text(uiState.erroMotivo ?: "")
-                } else {
-                    Text("${uiState.motivo.length}/5 caracteres mínimos")
-                }
-            },
-            minLines = 2,
-            maxLines = 4,
             modifier = Modifier.fillMaxWidth()
-        )
+        ) {
+            OutlinedTextField(
+                value = uiState.motivoDisplayText,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Motivo") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.EditNote,
+                        contentDescription = null
+                    )
+                },
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = uiState.showMotivoDropdown)
+                },
+                isError = uiState.motivoSelecionado == MotivoEdicao.NENHUM,
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                modifier = Modifier
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    .fillMaxWidth()
+            )
+
+            ExposedDropdownMenu(
+                expanded = uiState.showMotivoDropdown,
+                onDismissRequest = { onAction(EditPontoAction.FecharMotivoDropdown) }
+            ) {
+                MotivoEdicao.selecionaveis().forEach { motivo ->
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = when (motivo) {
+                                        MotivoEdicao.ESQUECI_REGISTRAR -> Icons.Default.AlarmOff
+                                        MotivoEdicao.ERRO_HORARIO -> Icons.Default.EditOff
+                                        MotivoEdicao.SISTEMA_INDISPONIVEL -> Icons.Default.CloudOff
+                                        MotivoEdicao.AJUSTE_AUTORIZADO -> Icons.Default.CheckCircle
+                                        MotivoEdicao.TRABALHO_EXTERNO -> Icons.Default.BusinessCenter
+                                        MotivoEdicao.HORARIO_FLEXIVEL -> Icons.Default.SwapHoriz
+                                        MotivoEdicao.FALTA_JUSTIFICADA -> Icons.Default.EventBusy
+                                        MotivoEdicao.ATESTADO_MEDICO -> Icons.Default.LocalHospital
+                                        MotivoEdicao.OUTRO -> Icons.Default.MoreHoriz
+                                        else -> Icons.Default.Label
+                                    },
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(motivo.descricao)
+                            }
+                        },
+                        onClick = { onAction(EditPontoAction.SelecionarMotivo(motivo)) },
+                        leadingIcon = if (motivo == uiState.motivoSelecionado) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        } else null
+                    )
+                }
+            }
+        }
+
+        // Campo de detalhes (para "Outro" ou motivos que requerem detalhes)
+        if (uiState.mostrarCampoDetalhes) {
+            OutlinedTextField(
+                value = uiState.motivoDetalhes,
+                onValueChange = { onAction(EditPontoAction.AtualizarMotivoDetalhes(it)) },
+                label = {
+                    Text(
+                        if (uiState.motivoSelecionado == MotivoEdicao.OUTRO)
+                            "Especifique o motivo *"
+                        else
+                            "Detalhes adicionais *"
+                    )
+                },
+                placeholder = { Text("Descreva o motivo (mín. 5 caracteres)") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Description,
+                        contentDescription = null
+                    )
+                },
+                isError = uiState.motivoDetalhes.isNotEmpty() && uiState.motivoDetalhes.trim().length < 5,
+                supportingText = {
+                    Text("${uiState.motivoDetalhes.trim().length}/5 caracteres mínimos")
+                },
+                minLines = 2,
+                maxLines = 4,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
 
         // Resumo das alterações
         if (uiState.temAlteracoes) {
@@ -524,15 +613,21 @@ private fun SectionTitle(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DeleteConfirmDialog(
     tipoPonto: TipoPonto,
     horaFormatada: String,
-    motivo: String,
-    onMotivoChange: (String) -> Unit,
+    motivoSelecionado: MotivoEdicao,
+    motivoDetalhes: String,
+    onSelecionarMotivo: (MotivoEdicao) -> Unit,
+    onMotivoDetalhesChange: (String) -> Unit,
+    motivoValido: Boolean,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    var dropdownExpanded by remember { mutableStateOf(false) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = {
@@ -553,21 +648,65 @@ private fun DeleteConfirmDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                OutlinedTextField(
-                    value = motivo,
-                    onValueChange = onMotivoChange,
-                    label = { Text("Motivo da exclusão *") },
-                    placeholder = { Text("Informe o motivo (mín. 5 caracteres)") },
-                    isError = motivo.isNotEmpty() && motivo.length < 5,
-                    minLines = 2,
+
+                // Dropdown de motivos
+                ExposedDropdownMenuBox(
+                    expanded = dropdownExpanded,
+                    onExpandedChange = { dropdownExpanded = it },
                     modifier = Modifier.fillMaxWidth()
-                )
+                ) {
+                    OutlinedTextField(
+                        value = if (motivoSelecionado == MotivoEdicao.NENHUM)
+                            "Selecione um motivo..."
+                        else
+                            motivoSelecionado.descricao,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Motivo da exclusão *") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded)
+                        },
+                        isError = motivoSelecionado == MotivoEdicao.NENHUM,
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = dropdownExpanded,
+                        onDismissRequest = { dropdownExpanded = false }
+                    ) {
+                        MotivoEdicao.selecionaveis().forEach { motivo ->
+                            DropdownMenuItem(
+                                text = { Text(motivo.descricao) },
+                                onClick = {
+                                    onSelecionarMotivo(motivo)
+                                    dropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Campo de detalhes se necessário
+                if (motivoSelecionado.requerDetalhes && motivoSelecionado != MotivoEdicao.NENHUM) {
+                    OutlinedTextField(
+                        value = motivoDetalhes,
+                        onValueChange = onMotivoDetalhesChange,
+                        label = { Text("Especifique *") },
+                        placeholder = { Text("Mín. 5 caracteres") },
+                        isError = motivoDetalhes.isNotEmpty() && motivoDetalhes.trim().length < 5,
+                        minLines = 2,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
-                enabled = motivo.length >= 5
+                enabled = motivoValido
             ) {
                 Text("Excluir", color = MaterialTheme.colorScheme.error)
             }

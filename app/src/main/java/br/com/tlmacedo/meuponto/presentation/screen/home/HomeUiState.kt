@@ -2,9 +2,11 @@
 package br.com.tlmacedo.meuponto.presentation.screen.home
 
 import br.com.tlmacedo.meuponto.domain.model.BancoHoras
+import br.com.tlmacedo.meuponto.domain.model.ConfiguracaoEmprego
 import br.com.tlmacedo.meuponto.domain.model.Emprego
 import br.com.tlmacedo.meuponto.domain.model.Ponto
 import br.com.tlmacedo.meuponto.domain.model.ResumoDia
+import br.com.tlmacedo.meuponto.domain.model.TipoNsr
 import br.com.tlmacedo.meuponto.domain.model.VersaoJornada
 import br.com.tlmacedo.meuponto.domain.model.feriado.Feriado
 import br.com.tlmacedo.meuponto.domain.usecase.ponto.ProximoPonto
@@ -24,6 +26,7 @@ import java.util.Locale
  * @updated 2.7.0 - Adicionado showEmpregoMenu para menu de opções do emprego
  * @updated 2.8.0 - Adicionada versaoJornadaAtual para exibição do período no ResumoCard
  * @updated 3.4.0 - Adicionado suporte a feriados
+ * @updated 3.7.0 - Adicionado suporte a NSR (dialog e exibição)
  */
 data class HomeUiState(
     val dataSelecionada: LocalDate = LocalDate.now(),
@@ -35,6 +38,7 @@ data class HomeUiState(
     val empregoAtivo: Emprego? = null,
     val empregosDisponiveis: List<Emprego> = emptyList(),
     val versaoJornadaAtual: VersaoJornada? = null,
+    val configuracaoEmprego: ConfiguracaoEmprego? = null,
     // Feriados
     val feriadosDoDia: List<Feriado> = emptyList(),
     // Loading e dialogs
@@ -45,6 +49,10 @@ data class HomeUiState(
     val showEmpregoSelector: Boolean = false,
     val showEmpregoMenu: Boolean = false,
     val showDatePicker: Boolean = false,
+    // NSR Dialog
+    val showNsrDialog: Boolean = false,
+    val nsrPendente: String = "",
+    val horaPendenteParaRegistro: LocalTime? = null,
     val pontoParaExcluir: Ponto? = null,
     val erro: String? = null
 ) {
@@ -73,6 +81,22 @@ data class HomeUiState(
      */
     val isPassado: Boolean
         get() = dataSelecionada.isBefore(LocalDate.now())
+
+    // ========================================================================
+    // NSR
+    // ========================================================================
+
+    /**
+     * Verifica se NSR está habilitado para o emprego ativo.
+     */
+    val nsrHabilitado: Boolean
+        get() = configuracaoEmprego?.habilitarNsr == true
+
+    /**
+     * Tipo de NSR configurado (NUMERICO ou ALFANUMERICO).
+     */
+    val tipoNsr: TipoNsr
+        get() = configuracaoEmprego?.tipoNsr ?: TipoNsr.NUMERICO
 
     // ========================================================================
     // FERIADOS

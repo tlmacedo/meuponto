@@ -4,6 +4,7 @@ package br.com.tlmacedo.meuponto.presentation.screen.editponto
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import br.com.tlmacedo.meuponto.domain.model.MotivoEdicao
 import br.com.tlmacedo.meuponto.domain.model.TipoPonto
 import br.com.tlmacedo.meuponto.domain.repository.ConfiguracaoEmpregoRepository
 import br.com.tlmacedo.meuponto.domain.repository.PontoRepository
@@ -62,7 +63,12 @@ class EditPontoViewModel @Inject constructor(
                 action.latitude, action.longitude, action.endereco
             )
             is EditPontoAction.AtualizarObservacao -> atualizarObservacao(action.observacao)
-            is EditPontoAction.AtualizarMotivo -> atualizarMotivo(action.motivo)
+
+            // Motivo
+            is EditPontoAction.SelecionarMotivo -> selecionarMotivo(action.motivo)
+            is EditPontoAction.AtualizarMotivoDetalhes -> atualizarMotivoDetalhes(action.detalhes)
+            EditPontoAction.AbrirMotivoDropdown -> _uiState.update { it.copy(showMotivoDropdown = true) }
+            EditPontoAction.FecharMotivoDropdown -> _uiState.update { it.copy(showMotivoDropdown = false) }
 
             // Dialogs
             EditPontoAction.AbrirTimePicker -> _uiState.update { it.copy(showTimePicker = true) }
@@ -172,12 +178,21 @@ class EditPontoViewModel @Inject constructor(
         _uiState.update { it.copy(observacao = observacao) }
     }
 
-    private fun atualizarMotivo(motivo: String) {
-        _uiState.update { it.copy(motivo = motivo) }
+    private fun selecionarMotivo(motivo: MotivoEdicao) {
+        _uiState.update {
+            it.copy(
+                motivoSelecionado = motivo,
+                motivoDetalhes = if (motivo.requerDetalhes) it.motivoDetalhes else "",
+                showMotivoDropdown = false
+            )
+        }
+    }
+
+    private fun atualizarMotivoDetalhes(detalhes: String) {
+        _uiState.update { it.copy(motivoDetalhes = detalhes) }
     }
 
     private fun capturarLocalizacao() {
-        // TODO: Implementar captura de localização via GPS com LocationService
         _uiState.update {
             it.copy(
                 showLocationPicker = false,

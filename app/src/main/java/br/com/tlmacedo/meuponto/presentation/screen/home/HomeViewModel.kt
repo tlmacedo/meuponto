@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import br.com.tlmacedo.meuponto.domain.model.Emprego
 import br.com.tlmacedo.meuponto.domain.model.Ponto
 import br.com.tlmacedo.meuponto.domain.model.DiaSemana
+import br.com.tlmacedo.meuponto.domain.repository.ConfiguracaoEmpregoRepository
 import br.com.tlmacedo.meuponto.domain.repository.HorarioDiaSemanaRepository
 import br.com.tlmacedo.meuponto.domain.repository.VersaoJornadaRepository
 import br.com.tlmacedo.meuponto.domain.usecase.emprego.ListarEmpregosUseCase
@@ -45,11 +46,13 @@ import javax.inject.Inject
  * - Cálculo de resumos e saldos
  * - Versão de jornada vigente
  * - Feriados do dia
+ * - Suporte a NSR
  *
  * @author Thiago
  * @since 2.0.0
  * @updated 2.8.0 - Adicionado carregamento de versão de jornada
  * @updated 3.4.0 - Adicionado suporte a feriados
+ * @updated 3.7.0 - Adicionado suporte a NSR
  */
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -64,7 +67,8 @@ class HomeViewModel @Inject constructor(
     private val trocarEmpregoAtivoUseCase: TrocarEmpregoAtivoUseCase,
     private val obterFeriadosDaDataUseCase: ObterFeriadosDaDataUseCase,
     private val horarioDiaSemanaRepository: HorarioDiaSemanaRepository,
-    private val versaoJornadaRepository: VersaoJornadaRepository
+    private val versaoJornadaRepository: VersaoJornadaRepository,
+    private val configuracaoEmpregoRepository: ConfiguracaoEmpregoRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -92,10 +96,22 @@ class HomeViewModel @Inject constructor(
     fun onAction(action: HomeAction) {
         when (action) {
             // Ações de registro de ponto
-            is HomeAction.RegistrarPontoAgora -> registrarPonto(LocalTime.now())
+            is HomeAction.RegistrarPontoAgora -> iniciarRegistroPonto(LocalTime.now())
             is HomeAction.AbrirTimePickerDialog -> abrirTimePicker()
             is HomeAction.FecharTimePickerDialog -> fecharTimePicker()
-            is HomeAction.RegistrarPontoManual -> registrarPonto(action.hora)
+            is HomeAction.RegistrarPontoManual -> iniciarRegistroPonto(action.hora)
+
+            // Ações de NSR
+            is HomeAction.AtualizarNsr -> atualizarNsr(action.nsr)
+            is HomeAction.ConfirmarRegistroComNsr -> confirmarRegistroComNsr()
+            is HomeAction.CancelarNsrDialog -> cancelarNsrDialog()
+
+            // No HomeViewModel, dentro do onAction:
+            is HomeAction.EditarPonto -> {
+                viewModelScope.launch {
+                    _uiEvent.emit(HomeUiEvent.NavegarParaEditarPonto(action.pontoId))
+                }
+            }
 
             // Ações de exclusão
             is HomeAction.SolicitarExclusao -> solicitarExclusao(action.ponto)
@@ -114,7 +130,6 @@ class HomeViewModel @Inject constructor(
             is HomeAction.SelecionarEmprego -> selecionarEmprego(action.emprego)
 
             // Ações de navegação
-            is HomeAction.EditarPonto -> navegarParaEdicao(action.pontoId)
             is HomeAction.NavegarParaHistorico -> navegarParaHistorico()
             is HomeAction.NavegarParaConfiguracoes -> navegarParaConfiguracoes()
 
@@ -131,7 +146,6 @@ class HomeViewModel @Inject constructor(
             is HomeAction.NavegarParaEditarEmprego -> navegarParaEditarEmprego()
             is HomeAction.AbrirMenuEmprego -> abrirMenuEmprego()
             is HomeAction.FecharMenuEmprego -> fecharMenuEmprego()
-
         }
     }
 
@@ -189,10 +203,21 @@ class HomeViewModel @Inject constructor(
 
                 // Recarrega dados se o emprego mudou
                 if (emprego != null && empregoAnterior?.id != emprego.id) {
+                    carregarConfiguracaoEmprego(emprego.id)
                     carregarPontosDoDia()  // Isso já carrega versão, banco e feriados
                     carregarBancoHoras()
                 }
             }
+        }
+    }
+
+    /**
+     * Carrega a configuração do emprego ativo.
+     */
+    private fun carregarConfiguracaoEmprego(empregoId: Long) {
+        viewModelScope.launch {
+            val configuracao = configuracaoEmpregoRepository.buscarPorEmpregoId(empregoId)
+            _uiState.update { it.copy(configuracaoEmprego = configuracao) }
         }
     }
 
@@ -389,6 +414,7 @@ class HomeViewModel @Inject constructor(
                     fecharSeletorEmprego()
                     _uiEvent.emit(HomeUiEvent.EmpregoTrocado(emprego.nome))
                     // Recarrega dados após troca de emprego
+                    carregarConfiguracaoEmprego(emprego.id)
                     recarregarDados()
                 }
                 is TrocarEmpregoAtivoUseCase.Resultado.NaoEncontrado -> {
@@ -423,9 +449,89 @@ class HomeViewModel @Inject constructor(
     }
 
     /**
-     * Registra um ponto com o horário especificado.
+     * Inicia o processo de registro de ponto.
+     * Se NSR estiver habilitado, abre o dialog de NSR.
+     * Caso contrário, registra o ponto diretamente.
      */
-    private fun registrarPonto(hora: LocalTime) {
+    private fun iniciarRegistroPonto(hora: LocalTime) {
+        val empregoId = _uiState.value.empregoAtivo?.id
+        if (empregoId == null) {
+            viewModelScope.launch {
+                _uiEvent.emit(HomeUiEvent.MostrarErro("Nenhum emprego ativo selecionado"))
+            }
+            return
+        }
+
+        // Fecha o TimePicker se estiver aberto
+        fecharTimePicker()
+
+        // Verifica se NSR está habilitado
+        if (_uiState.value.nsrHabilitado) {
+            // Abre dialog de NSR
+            _uiState.update {
+                it.copy(
+                    showNsrDialog = true,
+                    nsrPendente = "",
+                    horaPendenteParaRegistro = hora
+                )
+            }
+        } else {
+            // Registra diretamente
+            registrarPonto(hora, null)
+        }
+    }
+
+    /**
+     * Atualiza o valor do NSR digitado.
+     */
+    private fun atualizarNsr(nsr: String) {
+        _uiState.update { it.copy(nsrPendente = nsr) }
+    }
+
+    /**
+     * Confirma o registro do ponto com o NSR informado.
+     */
+    private fun confirmarRegistroComNsr() {
+        val hora = _uiState.value.horaPendenteParaRegistro ?: return
+        val nsr = _uiState.value.nsrPendente
+
+        if (nsr.isBlank()) {
+            viewModelScope.launch {
+                _uiEvent.emit(HomeUiEvent.MostrarErro("NSR é obrigatório"))
+            }
+            return
+        }
+
+        // Fecha o dialog
+        _uiState.update {
+            it.copy(
+                showNsrDialog = false,
+                nsrPendente = "",
+                horaPendenteParaRegistro = null
+            )
+        }
+
+        // Registra o ponto com NSR
+        registrarPonto(hora, nsr)
+    }
+
+    /**
+     * Cancela o dialog de NSR.
+     */
+    private fun cancelarNsrDialog() {
+        _uiState.update {
+            it.copy(
+                showNsrDialog = false,
+                nsrPendente = "",
+                horaPendenteParaRegistro = null
+            )
+        }
+    }
+
+    /**
+     * Registra um ponto com o horário e NSR especificados.
+     */
+    private fun registrarPonto(hora: LocalTime, nsr: String?) {
         val empregoId = _uiState.value.empregoAtivo?.id
         if (empregoId == null) {
             viewModelScope.launch {
@@ -440,7 +546,8 @@ class HomeViewModel @Inject constructor(
 
             val parametros = RegistrarPontoUseCase.Parametros(
                 empregoId = empregoId,
-                dataHora = dataHora
+                dataHora = dataHora,
+                nsr = nsr
             )
 
             when (val resultado = registrarPontoUseCase(parametros)) {
@@ -450,7 +557,6 @@ class HomeViewModel @Inject constructor(
                     _uiEvent.emit(
                         HomeUiEvent.MostrarMensagem("$tipoDescricao registrada às $horaFormatada")
                     )
-                    fecharTimePicker()
                 }
                 is RegistrarPontoUseCase.Resultado.Erro -> {
                     _uiEvent.emit(HomeUiEvent.MostrarErro(resultado.mensagem))
@@ -471,7 +577,14 @@ class HomeViewModel @Inject constructor(
                     _uiEvent.emit(HomeUiEvent.MostrarErro("Localização é obrigatória para este emprego"))
                 }
                 is RegistrarPontoUseCase.Resultado.NsrObrigatorio -> {
-                    _uiEvent.emit(HomeUiEvent.MostrarErro("NSR é obrigatório para este emprego"))
+                    // Abre dialog de NSR se não foi fornecido
+                    _uiState.update {
+                        it.copy(
+                            showNsrDialog = true,
+                            nsrPendente = "",
+                            horaPendenteParaRegistro = hora
+                        )
+                    }
                 }
             }
         }
@@ -539,7 +652,7 @@ class HomeViewModel @Inject constructor(
      */
     private fun navegarParaEdicao(pontoId: Long) {
         viewModelScope.launch {
-            _uiEvent.emit(HomeUiEvent.NavegarParaEdicao(pontoId))
+            _uiEvent.emit(HomeUiEvent.NavegarParaEditarPonto(pontoId))
         }
     }
 
@@ -589,5 +702,4 @@ class HomeViewModel @Inject constructor(
     private fun fecharDatePicker() {
         _uiState.update { it.copy(showDatePicker = false) }
     }
-
 }

@@ -1,6 +1,7 @@
 // Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/presentation/screen/editponto/EditPontoAction.kt
 package br.com.tlmacedo.meuponto.presentation.screen.editponto
 
+import br.com.tlmacedo.meuponto.domain.model.MotivoEdicao
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -35,8 +36,17 @@ sealed interface EditPontoAction {
     /** Atualiza a observação do ponto */
     data class AtualizarObservacao(val observacao: String) : EditPontoAction
 
-    /** Atualiza o motivo da edição */
-    data class AtualizarMotivo(val motivo: String) : EditPontoAction
+    /** Seleciona um motivo pré-definido */
+    data class SelecionarMotivo(val motivo: MotivoEdicao) : EditPontoAction
+
+    /** Atualiza os detalhes do motivo (para "Outro" ou motivos que requerem detalhes) */
+    data class AtualizarMotivoDetalhes(val detalhes: String) : EditPontoAction
+
+    /** Abre o dropdown de motivos */
+    data object AbrirMotivoDropdown : EditPontoAction
+
+    /** Fecha o dropdown de motivos */
+    data object FecharMotivoDropdown : EditPontoAction
 
     // ══════════════════════════════════════════════════════════════════════
     // AÇÕES DE DIALOGS

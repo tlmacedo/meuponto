@@ -51,6 +51,7 @@ import br.com.tlmacedo.meuponto.presentation.components.RegistrarPontoManualButt
 import br.com.tlmacedo.meuponto.presentation.components.ResumoCard
 import br.com.tlmacedo.meuponto.presentation.components.TimePickerDialog
 import br.com.tlmacedo.meuponto.presentation.components.FeriadoBanner
+import br.com.tlmacedo.meuponto.presentation.components.NsrInputDialog
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -102,7 +103,7 @@ fun HomeScreen(
                 is HomeUiEvent.NavegarParaConfiguracoes -> {
                     onNavigateToSettings()
                 }
-                is HomeUiEvent.NavegarParaEdicao -> {
+                is HomeUiEvent.NavegarParaEditarPonto -> {
                     onNavigateToEditPonto(event.pontoId)
                 }
                 is HomeUiEvent.EmpregoTrocado -> {
@@ -188,6 +189,18 @@ fun HomeScreen(
             pontosHoje = uiState.pontosHoje,
             onConfirm = { viewModel.onAction(HomeAction.ConfirmarExclusao) },
             onDismiss = { viewModel.onAction(HomeAction.CancelarExclusao) }
+        )
+    }
+
+    // Dialog de NSR
+    if (uiState.showNsrDialog) {
+        NsrInputDialog(
+            tipoNsr = uiState.tipoNsr,
+            valor = uiState.nsrPendente,
+            tipoPonto = uiState.proximoTipo.descricao,
+            onValorChange = { viewModel.onAction(HomeAction.AtualizarNsr(it)) },
+            onConfirm = { viewModel.onAction(HomeAction.ConfirmarRegistroComNsr) },
+            onDismiss = { viewModel.onAction(HomeAction.CancelarNsrDialog) }
         )
     }
 
@@ -378,7 +391,14 @@ internal fun HomeContent(
                 ) {
                     IntervaloCard(
                         intervalo = intervalo,
-                        mostrarContadorTempoReal = uiState.isHoje
+                        mostrarContadorTempoReal = uiState.isHoje,
+                        mostrarNsr = uiState.nsrHabilitado,
+                        onEditarEntrada = { pontoId ->
+                            onAction(HomeAction.EditarPonto(pontoId))
+                        },
+                        onEditarSaida = { pontoId ->
+                            onAction(HomeAction.EditarPonto(pontoId))
+                        }
                     )
                 }
             }

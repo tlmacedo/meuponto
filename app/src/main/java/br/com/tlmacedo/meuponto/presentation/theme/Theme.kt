@@ -1,3 +1,4 @@
+// Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/presentation/theme/Theme.kt
 package br.com.tlmacedo.meuponto.presentation.theme
 
 import android.os.Build
@@ -9,6 +10,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -40,15 +42,15 @@ private val DarkColorScheme = darkColorScheme(
     primary = DarkPrimary,
     onPrimary = OnPrimary,
     primaryContainer = DarkPrimaryVariant,
-    onPrimaryContainer = PrimaryLight,
+    onPrimaryContainer = Color(0xFFE0E7FF),  // Texto claro para contraste no card azul
     secondary = Secondary,
     onSecondary = OnSecondary,
     secondaryContainer = DarkSurfaceVariant,
-    onSecondaryContainer = OnSecondary,
+    onSecondaryContainer = Color(0xFFE2E8F0),
     surface = DarkSurface,
     onSurface = DarkOnSurface,
     surfaceVariant = DarkSurfaceVariant,
-    onSurfaceVariant = OnSurfaceVariant,
+    onSurfaceVariant = Color(0xFFCBD5E1),  // Aumentado contraste
     background = DarkBackground,
     onBackground = DarkOnBackground,
     error = Error,
