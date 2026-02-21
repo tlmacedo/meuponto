@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.tlmacedo.meuponto.domain.model.feriado.Feriado
 import br.com.tlmacedo.meuponto.domain.model.feriado.RecorrenciaFeriado
-import br.com.tlmacedo.meuponto.domain.model.feriado.TipoFeriado
 import br.com.tlmacedo.meuponto.domain.repository.FeriadoRepository
 import br.com.tlmacedo.meuponto.domain.usecase.feriado.ImportarFeriadosNacionaisUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,6 +21,7 @@ import javax.inject.Inject
  *
  * @author Thiago
  * @since 3.0.0
+ * @updated 5.3.0 - Suporte a múltiplos filtros de tipo e ordenação
  */
 @HiltViewModel
 class FeriadosListViewModel @Inject constructor(
@@ -42,18 +42,36 @@ class FeriadosListViewModel @Inject constructor(
                 _uiState.update { it.copy(searchQuery = event.query) }
                 aplicarFiltros()
             }
-            is FeriadosListEvent.OnFiltroTipoChange -> {
-                _uiState.update { it.copy(filtroTipo = event.tipo) }
+            is FeriadosListEvent.OnToggleTipo -> {
+                _uiState.update { state ->
+                    val novoSet = state.filtroTipos.toMutableSet()
+                    if (event.tipo in novoSet) {
+                        novoSet.remove(event.tipo)
+                    } else {
+                        novoSet.add(event.tipo)
+                    }
+                    state.copy(filtroTipos = novoSet)
+                }
                 aplicarFiltros()
             }
             is FeriadosListEvent.OnFiltroAnoChange -> {
                 _uiState.update { it.copy(filtroAno = event.ano) }
                 aplicarFiltros()
             }
+            FeriadosListEvent.OnToggleOrdem -> {
+                _uiState.update { state ->
+                    val novaOrdem = when (state.ordemData) {
+                        OrdemData.CRESCENTE -> OrdemData.DECRESCENTE
+                        OrdemData.DECRESCENTE -> OrdemData.CRESCENTE
+                    }
+                    state.copy(ordemData = novaOrdem)
+                }
+                aplicarFiltros()
+            }
             FeriadosListEvent.OnLimparFiltros -> {
                 _uiState.update {
                     it.copy(
-                        filtroTipo = null,
+                        filtroTipos = emptySet(),
                         filtroAno = null,
                         searchQuery = ""
                     )
@@ -101,7 +119,6 @@ class FeriadosListViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
 
             try {
-                // Observa TODOS os feriados (ativos e inativos) para a tela de gerenciamento
                 feriadoRepository.observarTodos().collect { feriados ->
                     val anos = extrairAnosDisponiveis(feriados)
                     _uiState.update { state ->
@@ -135,9 +152,9 @@ class FeriadosListViewModel @Inject constructor(
         val state = _uiState.value
         var filtrados = state.feriados
 
-        // Filtro por tipo
-        state.filtroTipo?.let { tipo ->
-            filtrados = filtrados.filter { it.tipo == tipo }
+        // Filtro por tipos (múltipla seleção)
+        if (state.filtroTipos.isNotEmpty()) {
+            filtrados = filtrados.filter { it.tipo in state.filtroTipos }
         }
 
         // Filtro por ano
@@ -152,16 +169,23 @@ class FeriadosListViewModel @Inject constructor(
             val query = state.searchQuery.lowercase()
             filtrados = filtrados.filter { feriado ->
                 feriado.nome.lowercase().contains(query) ||
-                        feriado.observacao?.lowercase()?.contains(query) == true
+                        feriado.observacao?.lowercase()?.contains(query) == true ||
+                        feriado.uf?.lowercase()?.contains(query) == true ||
+                        feriado.municipio?.lowercase()?.contains(query) == true
             }
         }
 
-        // Ordenar: Pontes primeiro, depois por data
-        filtrados = filtrados.sortedWith(
-            compareBy<Feriado> { it.tipo != TipoFeriado.PONTE }
-                .thenBy { it.calcularProximaOcorrencia() }
-                .thenBy { it.nome }
-        )
+        // Ordenar por data conforme direção selecionada
+        filtrados = when (state.ordemData) {
+            OrdemData.CRESCENTE -> filtrados.sortedWith(
+                compareBy<Feriado> { it.calcularProximaOcorrencia() ?: LocalDate.MAX }
+                    .thenBy { it.nome }
+            )
+            OrdemData.DECRESCENTE -> filtrados.sortedWith(
+                compareByDescending<Feriado> { it.calcularProximaOcorrencia() ?: LocalDate.MIN }
+                    .thenBy { it.nome }
+            )
+        }
 
         _uiState.update { it.copy(feriadosFiltrados = filtrados) }
     }

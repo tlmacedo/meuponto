@@ -1,8 +1,10 @@
 package br.com.tlmacedo.meuponto.util
 
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -117,4 +119,28 @@ fun LocalDateTime.formatarHora(): String {
  */
 fun LocalDateTime.formatarData(): String {
     return this.toLocalDate().formatarCurto()
+}
+
+// ============================================================================
+// DatePicker Extensions (Material 3)
+// ============================================================================
+
+/**
+ * Converte milissegundos do DatePicker (UTC) para LocalDate.
+ * O DatePicker do Material 3 retorna milissegundos em UTC,
+ * então devemos usar ZoneOffset.UTC para evitar deslocamento de fuso horário.
+ */
+fun Long.toLocalDateFromDatePicker(): LocalDate {
+    return java.time.Instant.ofEpochMilli(this)
+        .atZone(java.time.ZoneOffset.UTC)
+        .toLocalDate()
+}
+
+/**
+ * Converte LocalDate para milissegundos (para initialSelectedDateMillis do DatePicker).
+ */
+fun LocalDate.toDatePickerMillis(): Long {
+    return this.atStartOfDay(java.time.ZoneOffset.UTC)
+        .toInstant()
+        .toEpochMilli()
 }

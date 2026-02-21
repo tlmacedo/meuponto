@@ -213,11 +213,13 @@ fun FeriadosListScreen(
 
             // Filtros
             FeriadoFilterChips(
-                tipoSelecionado = uiState.filtroTipo,
+                tiposSelecionados = uiState.filtroTipos,
                 anoSelecionado = uiState.filtroAno,
                 anosDisponiveis = uiState.anosDisponiveis,
-                onTipoChange = { viewModel.onEvent(FeriadosListEvent.OnFiltroTipoChange(it)) },
+                ordemData = uiState.ordemData,
+                onToggleTipo = { viewModel.onEvent(FeriadosListEvent.OnToggleTipo(it)) },
                 onAnoChange = { viewModel.onEvent(FeriadosListEvent.OnFiltroAnoChange(it)) },
+                onToggleOrdem = { viewModel.onEvent(FeriadosListEvent.OnToggleOrdem) },
                 onLimparFiltros = { viewModel.onEvent(FeriadosListEvent.OnLimparFiltros) }
             )
 

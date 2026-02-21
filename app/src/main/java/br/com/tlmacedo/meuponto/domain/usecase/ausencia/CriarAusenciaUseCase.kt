@@ -6,6 +6,7 @@ import br.com.tlmacedo.meuponto.domain.model.ausencia.TipoAusencia
 import br.com.tlmacedo.meuponto.domain.repository.AusenciaRepository
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import javax.inject.Inject
 
 /**
@@ -19,13 +20,9 @@ sealed class ResultadoCriarAusencia {
 /**
  * Caso de uso para criar uma nova ausência.
  *
- * Validações:
- * - Data fim >= data início
- * - Não há sobreposição com outras ausências do mesmo emprego
- * - Emprego é válido
- *
  * @author Thiago
  * @since 4.0.0
+ * @updated 5.5.0 - Removido SubTipoFolga
  */
 class CriarAusenciaUseCase @Inject constructor(
     private val ausenciaRepository: AusenciaRepository,
@@ -33,15 +30,7 @@ class CriarAusenciaUseCase @Inject constructor(
 ) {
 
     /**
-     * Cria uma nova ausência.
-     *
-     * @param empregoId ID do emprego
-     * @param tipo Tipo da ausência
-     * @param dataInicio Data de início
-     * @param dataFim Data de fim (padrão = dataInicio)
-     * @param descricao Descrição opcional
-     * @param observacao Observação opcional
-     * @return Resultado da operação
+     * Cria uma nova ausência com todos os campos específicos.
      */
     suspend operator fun invoke(
         empregoId: Long,
@@ -49,16 +38,19 @@ class CriarAusenciaUseCase @Inject constructor(
         dataInicio: LocalDate,
         dataFim: LocalDate = dataInicio,
         descricao: String? = null,
-        observacao: String? = null
+        observacao: String? = null,
+        horaInicio: LocalTime? = null,
+        duracaoDeclaracaoMinutos: Int? = null,
+        duracaoAbonoMinutos: Int? = null,
+        periodoAquisitivo: String? = null,
+        imagemUri: String? = null
     ): ResultadoCriarAusencia {
-        // Validação: data fim >= data início
         if (dataFim < dataInicio) {
             return ResultadoCriarAusencia.Erro(
                 "A data de fim não pode ser anterior à data de início"
             )
         }
 
-        // Validação: verificar sobreposição
         val resultadoSobreposicao = validarSobreposicaoUseCase(
             empregoId = empregoId,
             dataInicio = dataInicio,
@@ -69,7 +61,6 @@ class CriarAusenciaUseCase @Inject constructor(
             return ResultadoCriarAusencia.Erro(resultadoSobreposicao.mensagem)
         }
 
-        // Criar ausência
         val agora = LocalDateTime.now()
         val ausencia = Ausencia(
             empregoId = empregoId,
@@ -78,6 +69,11 @@ class CriarAusenciaUseCase @Inject constructor(
             dataFim = dataFim,
             descricao = descricao ?: tipo.descricao,
             observacao = observacao,
+            horaInicio = horaInicio,
+            duracaoDeclaracaoMinutos = duracaoDeclaracaoMinutos,
+            duracaoAbonoMinutos = duracaoAbonoMinutos,
+            periodoAquisitivo = periodoAquisitivo,
+            imagemUri = imagemUri,
             ativo = true,
             criadoEm = agora,
             atualizadoEm = agora
@@ -102,7 +98,12 @@ class CriarAusenciaUseCase @Inject constructor(
             dataInicio = ausencia.dataInicio,
             dataFim = ausencia.dataFim,
             descricao = ausencia.descricao,
-            observacao = ausencia.observacao
+            observacao = ausencia.observacao,
+            horaInicio = ausencia.horaInicio,
+            duracaoDeclaracaoMinutos = ausencia.duracaoDeclaracaoMinutos,
+            duracaoAbonoMinutos = ausencia.duracaoAbonoMinutos,
+            periodoAquisitivo = ausencia.periodoAquisitivo,
+            imagemUri = ausencia.imagemUri
         )
     }
 }

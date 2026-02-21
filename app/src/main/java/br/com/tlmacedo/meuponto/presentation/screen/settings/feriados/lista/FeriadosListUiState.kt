@@ -5,19 +5,38 @@ import br.com.tlmacedo.meuponto.domain.model.feriado.Feriado
 import br.com.tlmacedo.meuponto.domain.model.feriado.TipoFeriado
 
 /**
+ * Direção da ordenação dos feriados.
+ *
+ * @author Thiago
+ * @since 5.3.0
+ */
+enum class OrdemData(val descricao: String, val emoji: String) {
+    CRESCENTE("Mais próximos primeiro", "⬆️"),
+    DECRESCENTE("Mais distantes primeiro", "⬇️")
+}
+
+/**
  * Estado da UI da tela de listagem de feriados.
  *
  * @author Thiago
  * @since 3.0.0
+ * @updated 5.3.0 - Adicionado suporte a múltiplos tipos e ordenação
  */
 data class FeriadosListUiState(
     val isLoading: Boolean = true,
     val feriados: List<Feriado> = emptyList(),
     val feriadosFiltrados: List<Feriado> = emptyList(),
-    val filtroTipo: TipoFeriado? = null,
+
+    /** Filtro por múltiplos tipos (set vazio = todos) */
+    val filtroTipos: Set<TipoFeriado> = emptySet(),
+
     val filtroAno: Int? = null,
     val anosDisponiveis: List<Int> = emptyList(),
     val searchQuery: String = "",
+
+    /** Direção da ordenação por data */
+    val ordemData: OrdemData = OrdemData.CRESCENTE,
+
     val showImportDialog: Boolean = false,
     val showDeleteDialog: Boolean = false,
     val feriadoParaExcluir: Feriado? = null,
@@ -35,7 +54,11 @@ data class FeriadosListUiState(
         get() = feriadosFiltrados.size
 
     val temFiltrosAtivos: Boolean
-        get() = filtroTipo != null || filtroAno != null || searchQuery.isNotBlank()
+        get() = filtroTipos.isNotEmpty() || filtroAno != null || searchQuery.isNotBlank()
+
+    /** Quantidade de filtros de tipo ativos */
+    val quantidadeTiposSelecionados: Int
+        get() = filtroTipos.size
 }
 
 /**
@@ -43,8 +66,15 @@ data class FeriadosListUiState(
  */
 sealed class FeriadosListEvent {
     data class OnSearchQueryChange(val query: String) : FeriadosListEvent()
-    data class OnFiltroTipoChange(val tipo: TipoFeriado?) : FeriadosListEvent()
+
+    /** Toggle de um tipo específico (adiciona/remove do set) */
+    data class OnToggleTipo(val tipo: TipoFeriado) : FeriadosListEvent()
+
     data class OnFiltroAnoChange(val ano: Int?) : FeriadosListEvent()
+
+    /** Alterna a direção da ordenação */
+    data object OnToggleOrdem : FeriadosListEvent()
+
     data object OnLimparFiltros : FeriadosListEvent()
     data object OnShowImportDialog : FeriadosListEvent()
     data object OnDismissImportDialog : FeriadosListEvent()

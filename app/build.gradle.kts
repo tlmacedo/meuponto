@@ -126,6 +126,9 @@ dependencies {
     // Timber
     implementation(libs.timber)
 
+    // Coil para carregamento de imagens
+    implementation("io.coil-kt:coil-compose:2.5.0")
+
     // ========================================================================
     // Unit Tests
     // ========================================================================

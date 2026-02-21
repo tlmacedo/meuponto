@@ -22,27 +22,35 @@ import javax.inject.Inject
  * - É aplicada na pausa cujo horário de saída seja mais próximo do saidaIntervaloIdeal
  * - Isso evita que múltiplas pausas no mesmo dia recebam tolerância indevidamente
  *
+ * TEMPO ABONADO:
+ * - Declarações e atestados parciais fornecem um tempo abonado em minutos
+ * - Esse tempo é somado ao saldo do dia (trabalhado + abonado - jornada)
+ * - Para declarações: jornada normal é mantida, abono complementa o trabalhado
+ *
  * @author Thiago
  * @since 1.0.0
  * @updated 2.11.0 - Simplificado: ResumoDia calcula horasTrabalhadas internamente
  * @updated 4.0.0 - Adicionado suporte a dias especiais (feriado, férias, folga, falta, atestado)
  * @updated 4.2.0 - Adicionado saidaIntervaloIdeal para tolerância única de intervalo
+ * @updated 5.5.0 - Adicionado tempoAbonadoMinutos para declarações/atestados parciais
  */
 class CalcularResumoDiaUseCase @Inject constructor() {
 
     /**
-     * Calcula o resumo do dia com configurações de tolerância e tipo de dia especial.
+     * Calcula o resumo do dia com configurações de tolerância, tipo de dia especial e tempo abonado.
      *
      * @param pontos Lista de pontos do dia
      * @param data Data do resumo
      * @param horarioDiaSemana Configuração do dia (opcional, para tolerâncias e horário ideal)
      * @param tipoDiaEspecial Tipo de dia especial (feriado, férias, etc.)
+     * @param tempoAbonadoMinutos Tempo abonado por declaração/atestado parcial (em minutos)
      */
     operator fun invoke(
         pontos: List<Ponto>,
         data: LocalDate = LocalDate.now(),
         horarioDiaSemana: HorarioDiaSemana? = null,
-        tipoDiaEspecial: TipoDiaEspecial = TipoDiaEspecial.NORMAL
+        tipoDiaEspecial: TipoDiaEspecial = TipoDiaEspecial.NORMAL,
+        tempoAbonadoMinutos: Int = 0
     ): ResumoDia {
         // Valores padrão se não houver configuração
         val cargaHoraria = horarioDiaSemana?.cargaHorariaMinutos ?: 480
@@ -57,7 +65,8 @@ class CalcularResumoDiaUseCase @Inject constructor() {
             intervaloMinimoMinutos = intervaloMinimo,
             toleranciaIntervaloMinutos = toleranciaIntervalo,
             tipoDiaEspecial = tipoDiaEspecial,
-            saidaIntervaloIdeal = saidaIntervaloIdeal
+            saidaIntervaloIdeal = saidaIntervaloIdeal,
+            tempoAbonadoMinutos = tempoAbonadoMinutos
         )
     }
 
@@ -69,13 +78,15 @@ class CalcularResumoDiaUseCase @Inject constructor() {
         pontos: List<Ponto>,
         data: LocalDate,
         cargaHorariaDiariaMinutos: Int,
-        tipoDiaEspecial: TipoDiaEspecial = TipoDiaEspecial.NORMAL
+        tipoDiaEspecial: TipoDiaEspecial = TipoDiaEspecial.NORMAL,
+        tempoAbonadoMinutos: Int = 0
     ): ResumoDia {
         return ResumoDia(
             data = data,
             pontos = pontos.sortedBy { it.dataHora },
             cargaHorariaDiaria = Duration.ofMinutes(cargaHorariaDiariaMinutos.toLong()),
-            tipoDiaEspecial = tipoDiaEspecial
+            tipoDiaEspecial = tipoDiaEspecial,
+            tempoAbonadoMinutos = tempoAbonadoMinutos
         )
     }
 }

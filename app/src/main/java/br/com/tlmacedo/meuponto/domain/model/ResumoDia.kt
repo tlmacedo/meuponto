@@ -108,10 +108,11 @@ enum class TipoDiaEspecial(val descricao: String, val emoji: String) {
  * - `horasTrabalhadas` é calculado a partir da soma das durações dos intervalos
  * - `tipoDiaEspecial` define o comportamento do cálculo
  * - Suporte a tempo em andamento (turno aberto) para cálculos em tempo real
+ * - Suporte a tempo abonado (declaração/atestado parcial)
  *
  * REGRAS DE CÁLCULO:
  * - Jornada zerada: saldo = trabalhado (hora extra)
- * - Jornada normal: saldo = trabalhado - jornada (pode ser negativo)
+ * - Jornada normal: saldo = trabalhado + abonado - jornada (pode ser negativo)
  *
  * TOLERÂNCIA DE INTERVALO:
  * - A tolerância é aplicada APENAS UMA VEZ por dia
@@ -124,6 +125,7 @@ enum class TipoDiaEspecial(val descricao: String, val emoji: String) {
  * @updated 4.0.0 - Adicionado suporte a dias especiais
  * @updated 4.1.0 - Adicionado cálculo com tempo em andamento
  * @updated 4.2.0 - Tolerância de intervalo aplicada apenas uma vez (na pausa mais próxima do horário padrão)
+ * @updated 5.5.0 - Adicionado tempoAbonadoMinutos para declarações/atestados parciais
  */
 data class ResumoDia(
     val data: LocalDate,
@@ -133,7 +135,9 @@ data class ResumoDia(
     val toleranciaIntervaloMinutos: Int = 15,
     val tipoDiaEspecial: TipoDiaEspecial = TipoDiaEspecial.NORMAL,
     /** Horário ideal de saída para intervalo (almoço) - usado para determinar qual pausa recebe tolerância */
-    val saidaIntervaloIdeal: LocalTime? = null
+    val saidaIntervaloIdeal: LocalTime? = null,
+    /** Tempo abonado por declaração/atestado parcial (em minutos) - somado ao saldo */
+    val tempoAbonadoMinutos: Int = 0
 ) {
 
     /** Lista de intervalos entre pontos de entrada e saída (FONTE ÚNICA DE VERDADE) */
@@ -176,6 +180,7 @@ data class ResumoDia(
     /**
      * Total de horas trabalhadas (CALCULADO A PARTIR DOS INTERVALOS FECHADOS).
      * NÃO inclui o tempo em andamento de turnos abertos.
+     * NÃO inclui o tempo abonado (que é somado apenas no saldo).
      */
     val horasTrabalhadas: Duration by lazy {
         intervalos
@@ -221,24 +226,32 @@ data class ResumoDia(
     val cargaHorariaEfetivaMinutos: Int
         get() = cargaHorariaEfetiva.toMinutes().toInt()
 
+    /** Tempo abonado como Duration */
+    val tempoAbonado: Duration
+        get() = Duration.ofMinutes(tempoAbonadoMinutos.toLong())
+
+    /** Verifica se há tempo abonado */
+    val temTempoAbonado: Boolean
+        get() = tempoAbonadoMinutos > 0
+
     /**
      * Saldo do dia (positivo = hora extra, negativo = deve horas).
      * NÃO inclui tempo em andamento.
      *
-     * Cálculo único: saldo = trabalhado - cargaHorariaEfetiva
+     * Cálculo: saldo = trabalhado + abonado - cargaHorariaEfetiva
      *
-     * - Jornada zerada: saldo = trabalhado - 0 = trabalhado (sempre >= 0)
-     * - Jornada normal: saldo = trabalhado - jornada (pode ser negativo)
+     * - Jornada zerada: saldo = trabalhado + abonado - 0 = trabalhado + abonado
+     * - Jornada normal: saldo = trabalhado + abonado - jornada (pode ser negativo)
      */
     val saldoDia: Duration
-        get() = horasTrabalhadas.minus(cargaHorariaEfetiva)
+        get() = horasTrabalhadas.plus(tempoAbonado).minus(cargaHorariaEfetiva)
 
     /**
      * Saldo do dia INCLUINDO tempo em andamento.
      * Use esta propriedade para exibição em tempo real na UI.
      */
     fun saldoDiaComAndamento(horaAtual: LocalTime = LocalTime.now()): Duration {
-        return horasTrabalhadasComAndamento(horaAtual).minus(cargaHorariaEfetiva)
+        return horasTrabalhadasComAndamento(horaAtual).plus(tempoAbonado).minus(cargaHorariaEfetiva)
     }
 
     /** Saldo do dia em minutos (sem andamento) */
@@ -415,6 +428,10 @@ data class ResumoDia(
     /** Descrição do tipo de dia especial */
     val tipoDiaEspecialDescricao: String
         get() = tipoDiaEspecial.descricao
+
+    /** Tempo abonado formatado (ex: "2h 30min") */
+    val tempoAbonadoFormatado: String
+        get() = tempoAbonado.formatarDuracao()
 
     // ========================================================================
     // CÁLCULO DOS INTERVALOS

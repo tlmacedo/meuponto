@@ -1,5 +1,5 @@
-// Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/presentation/screen/settings/feriados/components/FeriadoFilterChips.kt
-package br.com.tlmacedo.meuponto.presentation.screen.settings.feriados.components
+// Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/presentation/screen/ausencias/components/AusenciaFilterChips.kt
+package br.com.tlmacedo.meuponto.presentation.screen.ausencias.components
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -23,23 +23,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import br.com.tlmacedo.meuponto.domain.model.feriado.TipoFeriado
-import br.com.tlmacedo.meuponto.presentation.screen.settings.feriados.lista.OrdemData
+import br.com.tlmacedo.meuponto.domain.model.ausencia.TipoAusencia
+import br.com.tlmacedo.meuponto.presentation.screen.ausencias.OrdemData
 
 /**
- * Chips de filtro para tipos de feriado com suporte a múltipla seleção e ordenação.
+ * Chips de filtro para tipos de ausência com suporte a múltipla seleção.
  *
  * @author Thiago
- * @since 3.0.0
- * @updated 5.3.0 - Múltipla seleção de tipos e ordenação
+ * @since 5.6.0
  */
 @Composable
-fun FeriadoFilterChips(
-    tiposSelecionados: Set<TipoFeriado>,
+fun AusenciaFilterChips(
+    tiposSelecionados: Set<TipoAusencia>,
     anoSelecionado: Int?,
     anosDisponiveis: List<Int>,
     ordemData: OrdemData,
-    onToggleTipo: (TipoFeriado) -> Unit,
+    onToggleTipo: (TipoAusencia) -> Unit,
     onAnoChange: (Int?) -> Unit,
     onToggleOrdem: () -> Unit,
     onLimparFiltros: () -> Unit,
@@ -51,7 +50,7 @@ fun FeriadoFilterChips(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // Linha 1: Tipos de feriado
+        // Linha 1: Ordenação e tipos de ausência
         Row(
             modifier = Modifier
                 .horizontalScroll(rememberScrollState())
@@ -65,8 +64,8 @@ fun FeriadoFilterChips(
                 label = {
                     Text(
                         text = when (ordemData) {
-                            OrdemData.CRESCENTE -> "Próximos"
-                            OrdemData.DECRESCENTE -> "Distantes"
+                            OrdemData.CRESCENTE -> "Recentes"
+                            OrdemData.DECRESCENTE -> "Antigas"
                         },
                         style = MaterialTheme.typography.labelMedium
                     )
@@ -95,7 +94,7 @@ fun FeriadoFilterChips(
             )
 
             // Chips de tipo (múltipla seleção)
-            TipoFeriado.entries.forEach { tipo ->
+            TipoAusencia.entries.forEach { tipo ->
                 FilterChip(
                     selected = tipo in tiposSelecionados,
                     onClick = { onToggleTipo(tipo) },

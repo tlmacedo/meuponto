@@ -1,7 +1,6 @@
 // Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/data/local/database/entity/AusenciaEntity.kt
 package br.com.tlmacedo.meuponto.data.local.database.entity
 
-import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -10,12 +9,14 @@ import br.com.tlmacedo.meuponto.domain.model.ausencia.Ausencia
 import br.com.tlmacedo.meuponto.domain.model.ausencia.TipoAusencia
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 
 /**
- * Entidade do Room para persistência de ausências.
+ * Entidade de ausência para persistência no banco de dados.
  *
  * @author Thiago
  * @since 4.0.0
+ * @updated 5.5.0 - Removido SubTipoFolga
  */
 @Entity(
     tableName = "ausencias",
@@ -40,62 +41,87 @@ data class AusenciaEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
 
-    @ColumnInfo(name = "empregoId")
     val empregoId: Long,
-
-    @ColumnInfo(name = "tipo")
     val tipo: TipoAusencia,
-
-    @ColumnInfo(name = "dataInicio")
     val dataInicio: LocalDate,
-
-    @ColumnInfo(name = "dataFim")
     val dataFim: LocalDate,
 
-    @ColumnInfo(name = "descricao")
+    // Campos básicos
     val descricao: String? = null,
-
-    @ColumnInfo(name = "observacao")
     val observacao: String? = null,
 
-    @ColumnInfo(name = "ativo")
+    // ========================================================================
+    // CAMPOS ESPECÍFICOS POR TIPO (v5.4.0)
+    // ========================================================================
+
+    // Para DECLARACAO
+    val horaInicio: LocalTime? = null,
+    val duracaoDeclaracaoMinutos: Int? = null,
+    val duracaoAbonoMinutos: Int? = null,
+
+    // Para FOLGA (mantido para compatibilidade de migração, mas não mais usado)
+    @Deprecated("SubTipoFolga removido na v5.5.0")
+    val subTipoFolga: String? = null,
+
+    // Para FERIAS
+    val periodoAquisitivo: String? = null,
+
+    // Para anexos (ATESTADO, DECLARACAO, FALTA_JUSTIFICADA)
+    val imagemUri: String? = null,
+
+    // ========================================================================
+    // CAMPOS DE CONTROLE
+    // ========================================================================
     val ativo: Boolean = true,
-
-    @ColumnInfo(name = "criadoEm")
     val criadoEm: LocalDateTime = LocalDateTime.now(),
-
-    @ColumnInfo(name = "atualizadoEm")
     val atualizadoEm: LocalDateTime = LocalDateTime.now()
-)
+) {
+    /**
+     * Converte a Entity para o modelo de domínio.
+     */
+    fun toAusencia(): Ausencia {
+        return Ausencia(
+            id = id,
+            empregoId = empregoId,
+            tipo = tipo,
+            dataInicio = dataInicio,
+            dataFim = dataFim,
+            descricao = descricao,
+            observacao = observacao,
+            horaInicio = horaInicio,
+            duracaoDeclaracaoMinutos = duracaoDeclaracaoMinutos,
+            duracaoAbonoMinutos = duracaoAbonoMinutos,
+            periodoAquisitivo = periodoAquisitivo,
+            imagemUri = imagemUri,
+            ativo = ativo,
+            criadoEm = criadoEm,
+            atualizadoEm = atualizadoEm
+        )
+    }
 
-/**
- * Converte Entity para Domain.
- */
-fun AusenciaEntity.toDomain(): Ausencia = Ausencia(
-    id = id,
-    empregoId = empregoId,
-    tipo = tipo,
-    dataInicio = dataInicio,
-    dataFim = dataFim,
-    descricao = descricao,
-    observacao = observacao,
-    ativo = ativo,
-    criadoEm = criadoEm,
-    atualizadoEm = atualizadoEm
-)
-
-/**
- * Converte Domain para Entity.
- */
-fun Ausencia.toEntity(): AusenciaEntity = AusenciaEntity(
-    id = id,
-    empregoId = empregoId,
-    tipo = tipo,
-    dataInicio = dataInicio,
-    dataFim = dataFim,
-    descricao = descricao,
-    observacao = observacao,
-    ativo = ativo,
-    criadoEm = criadoEm,
-    atualizadoEm = atualizadoEm
-)
+    companion object {
+        /**
+         * Cria uma Entity a partir do modelo de domínio.
+         */
+        fun fromAusencia(ausencia: Ausencia): AusenciaEntity {
+            return AusenciaEntity(
+                id = ausencia.id,
+                empregoId = ausencia.empregoId,
+                tipo = ausencia.tipo,
+                dataInicio = ausencia.dataInicio,
+                dataFim = ausencia.dataFim,
+                descricao = ausencia.descricao,
+                observacao = ausencia.observacao,
+                horaInicio = ausencia.horaInicio,
+                duracaoDeclaracaoMinutos = ausencia.duracaoDeclaracaoMinutos,
+                duracaoAbonoMinutos = ausencia.duracaoAbonoMinutos,
+                subTipoFolga = null, // Deprecated
+                periodoAquisitivo = ausencia.periodoAquisitivo,
+                imagemUri = ausencia.imagemUri,
+                ativo = ausencia.ativo,
+                criadoEm = ausencia.criadoEm,
+                atualizadoEm = ausencia.atualizadoEm
+            )
+        }
+    }
+}

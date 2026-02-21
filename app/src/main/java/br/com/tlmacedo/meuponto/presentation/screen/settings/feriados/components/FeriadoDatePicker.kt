@@ -1,6 +1,8 @@
 // Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/presentation/screen/settings/feriados/components/FeriadoDatePicker.kt
 package br.com.tlmacedo.meuponto.presentation.screen.settings.feriados.components
 
+import br.com.tlmacedo.meuponto.util.toLocalDateFromDatePicker
+import br.com.tlmacedo.meuponto.util.toDatePickerMillis
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,7 +43,7 @@ fun FeriadoDatePicker(
             } ?: LocalDate.now()
         }
         RecorrenciaFeriado.UNICO -> dataAtual ?: LocalDate.now()
-    }.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    }.toDatePickerMillis()
 
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
 
@@ -55,9 +57,7 @@ fun FeriadoDatePicker(
             TextButton(
                 onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        val selectedDate = Instant.ofEpochMilli(millis)
-                            .atZone(ZoneId.systemDefault())
-                            .toLocalDate()
+                        val selectedDate = millis.toLocalDateFromDatePicker()
 
                         when (recorrencia) {
                             RecorrenciaFeriado.ANUAL -> {

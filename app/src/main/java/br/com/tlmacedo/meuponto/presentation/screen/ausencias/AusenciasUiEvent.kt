@@ -17,10 +17,14 @@ sealed interface AusenciasUiEvent {
 
 /**
  * Eventos do formulário de ausência.
+ *
+ * @updated 5.4.0 - Eventos para câmera e galeria
  */
 sealed interface AusenciaFormUiEvent {
     data object Voltar : AusenciaFormUiEvent
     data object SalvoComSucesso : AusenciaFormUiEvent
     data class MostrarMensagem(val mensagem: String) : AusenciaFormUiEvent
     data class MostrarErro(val mensagem: String) : AusenciaFormUiEvent
+    data object AbrirCamera : AusenciaFormUiEvent
+    data object AbrirGaleria : AusenciaFormUiEvent
 }

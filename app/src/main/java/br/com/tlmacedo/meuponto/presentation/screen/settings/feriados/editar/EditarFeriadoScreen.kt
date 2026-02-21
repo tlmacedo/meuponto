@@ -1,6 +1,8 @@
 // Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/presentation/screen/settings/feriados/editar/EditarFeriadoScreen.kt
 package br.com.tlmacedo.meuponto.presentation.screen.settings.feriados.editar
 
+import br.com.tlmacedo.meuponto.util.toLocalDateFromDatePicker
+import br.com.tlmacedo.meuponto.util.toDatePickerMillis
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +32,8 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -74,6 +78,7 @@ import java.util.Locale
  *
  * @author Thiago
  * @since 3.4.0
+ * @updated 5.3.0 - Corrigido seletor de UF
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -479,6 +484,7 @@ private fun AbrangenciaSelector(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DiaMesSelector(
     diaMes: MonthDay?,
@@ -496,28 +502,35 @@ private fun DiaMesSelector(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Seletor de Mês
-            Box(modifier = Modifier.weight(1f)) {
+            // Seletor de Mês usando ExposedDropdownMenuBox
+            ExposedDropdownMenuBox(
+                expanded = expandedMes,
+                onExpandedChange = { expandedMes = it },
+                modifier = Modifier.weight(1f)
+            ) {
                 OutlinedTextField(
-                    value = mesSelecionado?.getDisplayName(TextStyle.FULL, Locale("pt", "BR"))?.replaceFirstChar { it.uppercase() } ?: "",
+                    value = mesSelecionado?.getDisplayName(TextStyle.FULL, Locale("pt", "BR"))
+                        ?.replaceFirstChar { it.uppercase() } ?: "",
                     onValueChange = {},
                     label = { Text("Mês") },
                     readOnly = true,
-                    trailingIcon = {
-                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
-                    },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedMes) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { expandedMes = true }
+                        .menuAnchor()
                 )
-                DropdownMenu(
+                ExposedDropdownMenu(
                     expanded = expandedMes,
                     onDismissRequest = { expandedMes = false }
                 ) {
                     Month.entries.forEach { mes ->
                         DropdownMenuItem(
                             text = {
-                                Text(mes.getDisplayName(TextStyle.FULL, Locale("pt", "BR")).replaceFirstChar { it.uppercase() })
+                                Text(
+                                    mes.getDisplayName(TextStyle.FULL, Locale("pt", "BR"))
+                                        .replaceFirstChar { it.uppercase() }
+                                )
                             },
                             onClick = {
                                 val novoDia = diaSelecionado?.coerceAtMost(mes.length(false)) ?: 1
@@ -529,21 +542,24 @@ private fun DiaMesSelector(
                 }
             }
 
-            // Seletor de Dia
-            Box(modifier = Modifier.weight(0.5f)) {
+            // Seletor de Dia usando ExposedDropdownMenuBox
+            ExposedDropdownMenuBox(
+                expanded = expandedDia,
+                onExpandedChange = { expandedDia = it },
+                modifier = Modifier.weight(0.5f)
+            ) {
                 OutlinedTextField(
                     value = diaSelecionado?.toString() ?: "",
                     onValueChange = {},
                     label = { Text("Dia") },
                     readOnly = true,
-                    trailingIcon = {
-                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
-                    },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDia) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { expandedDia = true }
+                        .menuAnchor()
                 )
-                DropdownMenu(
+                ExposedDropdownMenu(
                     expanded = expandedDia,
                     onDismissRequest = { expandedDia = false }
                 ) {
@@ -600,6 +616,11 @@ private fun DataEspecificaSelector(
     )
 }
 
+/**
+ * Seletor de UF usando ExposedDropdownMenuBox.
+ * Corrigido para funcionar corretamente com dropdown.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun UfSelector(
     ufSelecionada: String?,
@@ -609,28 +630,63 @@ private fun UfSelector(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxWidth()) {
+    // Mapa de UF para nome completo do estado
+    val ufNomes = mapOf(
+        "AC" to "Acre",
+        "AL" to "Alagoas",
+        "AP" to "Amapá",
+        "AM" to "Amazonas",
+        "BA" to "Bahia",
+        "CE" to "Ceará",
+        "DF" to "Distrito Federal",
+        "ES" to "Espírito Santo",
+        "GO" to "Goiás",
+        "MA" to "Maranhão",
+        "MT" to "Mato Grosso",
+        "MS" to "Mato Grosso do Sul",
+        "MG" to "Minas Gerais",
+        "PA" to "Pará",
+        "PB" to "Paraíba",
+        "PR" to "Paraná",
+        "PE" to "Pernambuco",
+        "PI" to "Piauí",
+        "RJ" to "Rio de Janeiro",
+        "RN" to "Rio Grande do Norte",
+        "RS" to "Rio Grande do Sul",
+        "RO" to "Rondônia",
+        "RR" to "Roraima",
+        "SC" to "Santa Catarina",
+        "SP" to "São Paulo",
+        "SE" to "Sergipe",
+        "TO" to "Tocantins"
+    )
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = Modifier.fillMaxWidth()
+    ) {
         OutlinedTextField(
-            value = ufSelecionada ?: "",
+            value = ufSelecionada?.let { uf -> "$uf - ${ufNomes[uf] ?: ""}" } ?: "",
             onValueChange = {},
             label = { Text("Estado (UF)") },
+            placeholder = { Text("Selecione o estado") },
             readOnly = true,
             isError = error != null,
             supportingText = error?.let { { Text(it) } },
-            trailingIcon = {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
-            },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { expanded = true }
+                .menuAnchor()
         )
-        DropdownMenu(
+        ExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
             ufList.forEach { uf ->
                 DropdownMenuItem(
-                    text = { Text(uf) },
+                    text = { Text("$uf - ${ufNomes[uf] ?: ""}") },
                     onClick = {
                         onUfChange(uf)
                         expanded = false
@@ -700,6 +756,7 @@ private fun EmpregoSelector(
 @Composable
 private fun EmpregoSelectorDialog(
     empregos: List<br.com.tlmacedo.meuponto.domain.model.Emprego>,
+    empregoSelecionadoId: Long?,
     onEmpregoSelected: (br.com.tlmacedo.meuponto.domain.model.Emprego) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -751,11 +808,6 @@ private fun EmpregoSelectorDialog(
 
 /**
  * DatePicker corrigido para evitar problema de timezone.
- *
- * O DatePicker do Material3 trabalha internamente com milissegundos em UTC.
- * Para evitar o problema de "um dia a menos", precisamos:
- * 1. Converter LocalDate para millis usando UTC (não timezone local)
- * 2. Converter millis de volta para LocalDate usando UTC
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -764,7 +816,6 @@ private fun DatePickerDialogWrapper(
     onDateSelected: (LocalDate) -> Unit,
     onDismiss: () -> Unit
 ) {
-    // Converte LocalDate para millis em UTC ao meio-dia para evitar problemas de timezone
     val initialMillis = initialDate?.let {
         it.atTime(LocalTime.NOON)
             .toInstant(ZoneOffset.UTC)
@@ -781,10 +832,7 @@ private fun DatePickerDialogWrapper(
             TextButton(
                 onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        // O DatePicker retorna millis à meia-noite UTC do dia selecionado
-                        // Convertemos diretamente para LocalDate usando UTC
-                        val instant = java.time.Instant.ofEpochMilli(millis)
-                        val date = instant.atZone(ZoneOffset.UTC).toLocalDate()
+                        val date = millis.toLocalDateFromDatePicker()
                         onDateSelected(date)
                     }
                 }

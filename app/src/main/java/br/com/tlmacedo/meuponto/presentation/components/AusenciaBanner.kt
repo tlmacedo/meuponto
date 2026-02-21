@@ -13,11 +13,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.BeachAccess
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.Card
@@ -37,15 +41,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.tlmacedo.meuponto.domain.model.ausencia.Ausencia
 import br.com.tlmacedo.meuponto.domain.model.ausencia.TipoAusencia
+import java.time.format.DateTimeFormatter
+
+private val horaFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
 /**
  * Banner que exibe informações sobre ausências do dia (férias, atestado, folga, etc.).
+ * Layout otimizado para Declarações com informações compactas.
  *
  * @param ausencia Ausência do dia
  * @param modifier Modifier opcional
  *
  * @author Thiago
  * @since 4.0.0
+ * @updated 5.5.0 - Layout melhorado para Declarações
  */
 @Composable
 fun AusenciaBanner(
@@ -66,9 +75,9 @@ fun AusenciaBanner(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(12.dp)
         ) {
-            // Header com ícone e tipo da ausência
+            // Header com ícone, tipo e badges
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -78,102 +87,264 @@ fun AusenciaBanner(
                     imageVector = ausencia.tipo.getIcon(),
                     contentDescription = null,
                     tint = contentColor,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(24.dp)
                 )
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(10.dp))
 
-                // Tipo e descrição
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = ausencia.tipo.descricao,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = contentColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                // Tipo da ausência
+                Text(
+                    text = ausencia.tipo.descricao,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = contentColor,
+                    modifier = Modifier.weight(1f)
+                )
 
-                    // Descrição adicional se houver
-                    ausencia.descricao?.takeIf { it != ausencia.tipo.descricao }?.let { desc ->
-                        Text(
-                            text = desc,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = contentColor.copy(alpha = 0.8f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                // Ícone de anexo (se houver imagem)
+                if (ausencia.imagemUri != null) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = contentColor.copy(alpha = 0.12f),
+                        modifier = Modifier.padding(end = 6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = "Anexo",
+                            tint = contentColor,
+                            modifier = Modifier
+                                .padding(4.dp)
+                                .size(16.dp)
                         )
                     }
                 }
 
-                // Badge de status (justificada ou não)
+                // Badge de status
                 AusenciaStatusBadge(
                     isJustificada = ausencia.isJustificada,
                     contentColor = contentColor
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Período da ausência
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Chip com período
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = contentColor.copy(alpha = 0.12f)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.EventBusy,
-                            contentDescription = null,
-                            tint = contentColor,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = ausencia.formatarPeriodo(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = contentColor
-                        )
-                    }
-                }
-
-                // Quantidade de dias (se for período)
-                if (ausencia.isPeriodo) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = contentColor.copy(alpha = 0.12f)
-                    ) {
-                        Text(
-                            text = "${ausencia.quantidadeDias} dias",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = contentColor,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        )
-                    }
-                }
-            }
-
-            // Observação (se houver)
-            ausencia.observacao?.let { obs ->
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = obs,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = contentColor.copy(alpha = 0.7f),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 18.sp
+            // Conteúdo específico por tipo
+            when (ausencia.tipo) {
+                TipoAusencia.DECLARACAO -> DeclaracaoContent(
+                    ausencia = ausencia,
+                    contentColor = contentColor
+                )
+                else -> DefaultAusenciaContent(
+                    ausencia = ausencia,
+                    contentColor = contentColor
                 )
             }
+        }
+    }
+}
+
+/**
+ * Conteúdo específico para Declaração - layout compacto com todas as informações.
+ */
+@Composable
+private fun DeclaracaoContent(
+    ausencia: Ausencia,
+    contentColor: Color
+) {
+    // Linha 1: Horário e Duração
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        // Chip: Horário (início - fim)
+        ausencia.horaInicio?.let { inicio ->
+            val horaFim = ausencia.horaFimDeclaracao
+            InfoChip(
+                icon = Icons.Default.Schedule,
+                text = if (horaFim != null) {
+                    "${inicio.format(horaFormatter)} - ${horaFim.format(horaFormatter)}"
+                } else {
+                    inicio.format(horaFormatter)
+                },
+                contentColor = contentColor
+            )
+        }
+
+        // Chip: Duração total
+        ausencia.duracaoDeclaracaoMinutos?.let { duracao ->
+            InfoChip(
+                icon = Icons.Default.Timer,
+                text = formatarMinutos(duracao),
+                contentColor = contentColor
+            )
+        }
+
+        // Chip: Tempo abonado (destaque)
+        ausencia.duracaoAbonoMinutos?.let { abono ->
+            Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = contentColor.copy(alpha = 0.2f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AccessTime,
+                        contentDescription = null,
+                        tint = contentColor,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "${formatarMinutos(abono)} abonado",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = contentColor
+                    )
+                }
+            }
+        }
+    }
+
+//    // Linha 2: Motivo/Descrição (se houver)
+//    ausencia.descricao?.let { motivo ->
+//        Spacer(modifier = Modifier.height(6.dp))
+//        Text(
+//            text = motivo,
+//            style = MaterialTheme.typography.bodySmall,
+//            color = contentColor.copy(alpha = 0.85f),
+//            maxLines = 2,
+//            overflow = TextOverflow.Ellipsis,
+//            lineHeight = 16.sp
+//        )
+//    }
+
+    // Linha 3: Observação adicional (se houver e diferente do motivo)
+    ausencia.observacao?.takeIf { it != ausencia.descricao }?.let { obs ->
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = obs,
+            style = MaterialTheme.typography.labelSmall,
+            color = contentColor.copy(alpha = 0.6f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+/**
+ * Conteúdo padrão para outros tipos de ausência.
+ */
+@Composable
+private fun DefaultAusenciaContent(
+    ausencia: Ausencia,
+    contentColor: Color
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        // Chip com período
+        Surface(
+            shape = RoundedCornerShape(6.dp),
+            color = contentColor.copy(alpha = 0.12f)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.EventBusy,
+                    contentDescription = null,
+                    tint = contentColor,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = ausencia.formatarPeriodo(),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = contentColor
+                )
+            }
+        }
+
+        // Quantidade de dias (se for período)
+        if (ausencia.isPeriodo) {
+            Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = contentColor.copy(alpha = 0.12f)
+            ) {
+                Text(
+                    text = "${ausencia.quantidadeDias} dias",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = contentColor,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        }
+    }
+
+    // Descrição (se houver e diferente do tipo)
+    ausencia.descricao?.takeIf { it != ausencia.tipo.descricao }?.let { desc ->
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = desc,
+            style = MaterialTheme.typography.bodySmall,
+            color = contentColor.copy(alpha = 0.8f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+
+    // Observação (se houver)
+    ausencia.observacao?.let { obs ->
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = obs,
+            style = MaterialTheme.typography.labelSmall,
+            color = contentColor.copy(alpha = 0.6f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+/**
+ * Chip de informação reutilizável.
+ */
+@Composable
+private fun InfoChip(
+    icon: ImageVector,
+    text: String,
+    contentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = contentColor.copy(alpha = 0.12f),
+        modifier = modifier
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
+                color = contentColor
+            )
         }
     }
 }
@@ -191,28 +362,42 @@ private fun AusenciaStatusBadge(
     val texto = if (isJustificada) "Justificada" else "Injustificada"
 
     Surface(
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(6.dp),
         color = contentColor.copy(alpha = 0.1f),
         modifier = modifier
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = contentColor,
-                modifier = Modifier.size(14.dp)
+                modifier = Modifier.size(12.dp)
             )
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(3.dp))
             Text(
                 text = texto,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Medium,
-                color = contentColor
+                color = contentColor,
+                fontSize = 10.sp
             )
         }
+    }
+}
+
+/**
+ * Formata minutos para exibição (ex: 90 -> "1h30")
+ */
+private fun formatarMinutos(minutos: Int): String {
+    val horas = minutos / 60
+    val mins = minutos % 60
+    return when {
+        horas == 0 -> "${mins}min"
+        mins == 0 -> "${horas}h"
+        else -> "${horas}h${mins.toString().padStart(2, '0')}"
     }
 }
 

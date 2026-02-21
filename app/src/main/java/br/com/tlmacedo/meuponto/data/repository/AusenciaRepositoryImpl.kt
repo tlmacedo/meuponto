@@ -2,8 +2,8 @@
 package br.com.tlmacedo.meuponto.data.repository
 
 import br.com.tlmacedo.meuponto.data.local.database.dao.AusenciaDao
-import br.com.tlmacedo.meuponto.data.local.database.entity.toDomain
-import br.com.tlmacedo.meuponto.data.local.database.entity.toEntity
+import br.com.tlmacedo.meuponto.data.mapper.toDomain
+import br.com.tlmacedo.meuponto.data.mapper.toEntity
 import br.com.tlmacedo.meuponto.domain.model.ausencia.Ausencia
 import br.com.tlmacedo.meuponto.domain.model.ausencia.TipoAusencia
 import br.com.tlmacedo.meuponto.domain.repository.AusenciaRepository

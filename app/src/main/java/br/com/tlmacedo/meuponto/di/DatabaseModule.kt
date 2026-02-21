@@ -8,7 +8,6 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import br.com.tlmacedo.meuponto.data.local.database.MeuPontoDatabase
 import br.com.tlmacedo.meuponto.data.local.database.dao.*
 import br.com.tlmacedo.meuponto.data.local.database.migration.*
-import br.com.tlmacedo.meuponto.data.local.database.migration.MIGRATION_12_13
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,7 +21,7 @@ import javax.inject.Singleton
  *
  * @author Thiago
  * @since 1.0.0
- * @updated 3.0.0 - Adicionados DAOs de Feriados e ConfiguracaoPontesAno
+ * @updated 5.4.0 - Adicionada migração 13->14 para campos específicos de ausência
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -50,7 +49,8 @@ object DatabaseModule {
                 MIGRATION_9_10,
                 MIGRATION_10_11,
                 MIGRATION_11_12,
-                MIGRATION_12_13
+                MIGRATION_12_13,
+                MIGRATION_13_14  // Nova migração
             )
             .addCallback(createDatabaseCallback())
             .build()
@@ -237,7 +237,7 @@ object DatabaseModule {
     }
 
     // ========================================================================
-    // PROVIDERS DOS DAOs EXISTENTES
+    // PROVIDERS DOS DAOs
     // ========================================================================
 
     @Provides
@@ -276,10 +276,6 @@ object DatabaseModule {
     @Singleton
     fun provideVersaoJornadaDao(database: MeuPontoDatabase): VersaoJornadaDao = database.versaoJornadaDao()
 
-    // ========================================================================
-    // PROVIDERS DOS NOVOS DAOs - FERIADOS
-    // ========================================================================
-
     @Provides
     @Singleton
     fun provideFeriadoDao(database: MeuPontoDatabase): FeriadoDao = database.feriadoDao()
@@ -288,12 +284,7 @@ object DatabaseModule {
     @Singleton
     fun provideConfiguracaoPontesAnoDao(database: MeuPontoDatabase): ConfiguracaoPontesAnoDao = database.configuracaoPontesAnoDao()
 
-    // ========================================================================
-    // PROVIDER DO DAO - AUSÊNCIAS
-    // ========================================================================
-
     @Provides
     @Singleton
     fun provideAusenciaDao(database: MeuPontoDatabase): AusenciaDao = database.ausenciaDao()
-
 }

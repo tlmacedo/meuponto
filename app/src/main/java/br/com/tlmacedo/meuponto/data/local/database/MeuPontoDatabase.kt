@@ -35,7 +35,7 @@ import br.com.tlmacedo.meuponto.data.local.database.entity.VersaoJornadaEntity
  * Classe principal do banco de dados Room.
  *
  * @since 1.0.0
- * @updated 4.0.0 - Versão 13: Adicionada tabela de Ausências
+ * @updated 5.4.0 - Versão 14: Campos específicos para tipos de ausência
  */
 @Database(
     entities = [
@@ -52,13 +52,12 @@ import br.com.tlmacedo.meuponto.data.local.database.entity.VersaoJornadaEntity
         ConfiguracaoPontesAnoEntity::class,
         AusenciaEntity::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = true
 )
 @TypeConverters(Converters::class, FeriadoConverters::class)
 abstract class MeuPontoDatabase : RoomDatabase() {
 
-    // DAOs existentes
     abstract fun pontoDao(): PontoDao
     abstract fun empregoDao(): EmpregoDao
     abstract fun configuracaoEmpregoDao(): ConfiguracaoEmpregoDao
@@ -68,12 +67,8 @@ abstract class MeuPontoDatabase : RoomDatabase() {
     abstract fun fechamentoPeriodoDao(): FechamentoPeriodoDao
     abstract fun marcadorDao(): MarcadorDao
     abstract fun auditLogDao(): AuditLogDao
-
-    // DAOs - Feriados
     abstract fun feriadoDao(): FeriadoDao
     abstract fun configuracaoPontesAnoDao(): ConfiguracaoPontesAnoDao
-
-    // DAO - Ausências
     abstract fun ausenciaDao(): AusenciaDao
 
     companion object {

@@ -5,27 +5,22 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -38,12 +33,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.tlmacedo.meuponto.presentation.screen.ausencias.components.AusenciaCard
+import br.com.tlmacedo.meuponto.presentation.screen.ausencias.components.AusenciaFilterChips
 import kotlinx.coroutines.flow.collectLatest
 
 /**
@@ -51,6 +48,7 @@ import kotlinx.coroutines.flow.collectLatest
  *
  * @author Thiago
  * @since 4.0.0
+ * @updated 5.6.0 - Filtros múltiplos e lista unificada
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +60,7 @@ fun AusenciasScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     // Eventos
     LaunchedEffect(Unit) {
@@ -70,119 +69,11 @@ fun AusenciasScreen(
                 is AusenciasUiEvent.Voltar -> onVoltar()
                 is AusenciasUiEvent.NavegarParaNovaAusencia -> onNovaAusencia()
                 is AusenciasUiEvent.NavegarParaEditarAusencia -> onEditarAusencia(event.ausenciaId)
-                is AusenciasUiEvent.MostrarMensagem -> snackbarHostState.showSnackbar(event.mensagem)
-                is AusenciasUiEvent.MostrarErro -> snackbarHostState.showSnackbar(event.mensagem)
-            }
-        }
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Ausências") },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.onAction(AusenciasAction.Voltar) }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Voltar"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.onAction(AusenciasAction.NovaAusencia) },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Nova ausência",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // Navegador de mês
-            MonthNavigator(
-                mesFormatado = uiState.mesFormatado,
-                podeAnterior = uiState.podeNavegaMesAnterior,
-                podeProximo = uiState.podeNavegarMesProximo,
-                onAnterior = { viewModel.onAction(AusenciasAction.MesAnterior) },
-                onProximo = { viewModel.onAction(AusenciasAction.ProximoMes) }
-            )
-
-            // Conteúdo principal
-            when {
-                uiState.isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
+                is AusenciasUiEvent.MostrarMensagem -> {
+                    snackbarHostState.showSnackbar(event.mensagem, duration = SnackbarDuration.Short)
                 }
-
-                !uiState.temEmpregoAtivo -> {
-                    EmptyState(
-                        emoji = "🏢",
-                        titulo = "Nenhum emprego ativo",
-                        mensagem = "Configure um emprego para registrar ausências"
-                    )
-                }
-
-                !uiState.temAusencias -> {
-                    EmptyState(
-                        emoji = "📅",
-                        titulo = "Nenhuma ausência",
-                        mensagem = "Toque no + para registrar férias, folgas ou faltas"
-                    )
-                }
-
-                else -> {
-                    // Resumo
-                    if (uiState.totalDiasAusencia > 0) {
-                        ResumoAusencias(
-                            totalDias = uiState.totalDiasAusencia,
-                            totalPorTipo = uiState.totalDiasPorTipo,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-
-                    // Lista de ausências
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(
-                            items = uiState.ausenciasFiltradas,
-                            key = { it.id }
-                        ) { ausencia ->
-                            AusenciaCard(
-                                ausencia = ausencia,
-                                onEditar = {
-                                    viewModel.onAction(AusenciasAction.EditarAusencia(ausencia))
-                                },
-                                onExcluir = {
-                                    viewModel.onAction(AusenciasAction.SolicitarExclusao(ausencia))
-                                }
-                            )
-                        }
-
-                        item {
-                            Spacer(modifier = Modifier.height(80.dp)) // Espaço para FAB
-                        }
-                    }
+                is AusenciasUiEvent.MostrarErro -> {
+                    snackbarHostState.showSnackbar(event.mensagem, duration = SnackbarDuration.Long)
                 }
             }
         }
@@ -195,7 +86,7 @@ fun AusenciasScreen(
             title = { Text("Excluir ausência?") },
             text = {
                 Text(
-                    "Deseja excluir ${uiState.ausenciaParaExcluir!!.tipo.descricao} " +
+                    "Deseja excluir ${uiState.ausenciaParaExcluir!!.tipoDescricao} " +
                             "de ${uiState.ausenciaParaExcluir!!.formatarPeriodo()}?"
                 )
             },
@@ -215,76 +106,141 @@ fun AusenciasScreen(
             }
         )
     }
-}
 
-@Composable
-private fun MonthNavigator(
-    mesFormatado: String,
-    podeAnterior: Boolean,
-    podeProximo: Boolean,
-    onAnterior: () -> Unit,
-    onProximo: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconButton(
-            onClick = onAnterior,
-            enabled = podeAnterior
-        ) {
-            Icon(
-                imageVector = Icons.Default.ChevronLeft,
-                contentDescription = "Mês anterior"
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            TopAppBar(
+                title = { Text("Ausências") },
+                navigationIcon = {
+                    IconButton(onClick = { viewModel.onAction(AusenciasAction.Voltar) }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Voltar"
+                        )
+                    }
+                },
+                scrollBehavior = scrollBehavior
             )
-        }
-
-        Text(
-            text = mesFormatado,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        IconButton(
-            onClick = onProximo,
-            enabled = podeProximo
-        ) {
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = "Próximo mês"
+        },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = { viewModel.onAction(AusenciasAction.NovaAusencia) },
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text("Nova Ausência") }
             )
-        }
-    }
-}
-
-@Composable
-private fun ResumoAusencias(
-    totalDias: Int,
-    totalPorTipo: Map<br.com.tlmacedo.meuponto.domain.model.ausencia.TipoAusencia, Int>,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = "Total: $totalDias ${if (totalDias == 1) "dia" else "dias"} de ausência",
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.primary
-        )
-
-        Row(
-            modifier = Modifier.padding(top = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
         ) {
-            totalPorTipo.forEach { (tipo, dias) ->
-                Text(
-                    text = "${tipo.emoji} $dias",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            // Filtros
+            AusenciaFilterChips(
+                tiposSelecionados = uiState.filtroTipos,
+                anoSelecionado = uiState.filtroAno,
+                anosDisponiveis = uiState.anosDisponiveis,
+                ordemData = uiState.ordemData,
+                onToggleTipo = { viewModel.onAction(AusenciasAction.ToggleTipo(it)) },
+                onAnoChange = { viewModel.onAction(AusenciasAction.FiltroAnoChange(it)) },
+                onToggleOrdem = { viewModel.onAction(AusenciasAction.ToggleOrdem) },
+                onLimparFiltros = { viewModel.onAction(AusenciasAction.LimparFiltros) }
+            )
+
+            // Conteúdo
+            when {
+                uiState.isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                !uiState.temEmpregoAtivo -> {
+                    EmptyState(
+                        emoji = "🏢",
+                        titulo = "Nenhum emprego ativo",
+                        mensagem = "Configure um emprego para registrar ausências"
+                    )
+                }
+
+                uiState.ausenciasFiltradas.isEmpty() -> {
+                    EmptyState(
+                        emoji = "📅",
+                        titulo = if (uiState.temFiltrosAtivos) {
+                            "Nenhuma ausência encontrada"
+                        } else {
+                            "Nenhuma ausência cadastrada"
+                        },
+                        mensagem = if (uiState.temFiltrosAtivos) {
+                            "Tente ajustar os filtros selecionados"
+                        } else {
+                            "Toque no botão para registrar férias, folgas ou faltas"
+                        },
+                        showLimparFiltros = uiState.temFiltrosAtivos,
+                        onLimparFiltros = { viewModel.onAction(AusenciasAction.LimparFiltros) }
+                    )
+                }
+
+                else -> {
+                    LazyColumn(
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 8.dp,
+                            bottom = 88.dp // Espaço para o FAB
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Header com contagem e resumo
+                        item {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            ) {
+                                Text(
+                                    text = "${uiState.totalAusenciasFiltradas} ausência(s) • ${uiState.totalDiasAusencia} dia(s)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                // Resumo por tipo
+                                if (uiState.totalDiasPorTipo.isNotEmpty()) {
+                                    Text(
+                                        text = uiState.totalDiasPorTipo.entries.joinToString(" • ") { (tipo, dias) ->
+                                            "${tipo.emoji} $dias"
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+
+                        items(
+                            items = uiState.ausenciasFiltradas,
+                            key = { it.id }
+                        ) { ausencia ->
+                            AusenciaCard(
+                                ausencia = ausencia,
+                                onEditar = {
+                                    viewModel.onAction(AusenciasAction.EditarAusencia(ausencia))
+                                },
+                                onExcluir = {
+                                    viewModel.onAction(AusenciasAction.SolicitarExclusao(ausencia))
+                                },
+                                onToggleAtivo = {
+                                    viewModel.onAction(AusenciasAction.ToggleAtivo(ausencia))
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -295,6 +251,8 @@ private fun EmptyState(
     emoji: String,
     titulo: String,
     mensagem: String,
+    showLimparFiltros: Boolean = false,
+    onLimparFiltros: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -303,7 +261,8 @@ private fun EmptyState(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(32.dp)
         ) {
             Text(
                 text = emoji,
@@ -312,7 +271,8 @@ private fun EmptyState(
             Text(
                 text = titulo,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center
             )
             Text(
                 text = mensagem,
@@ -320,6 +280,12 @@ private fun EmptyState(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
+
+            if (showLimparFiltros) {
+                TextButton(onClick = onLimparFiltros) {
+                    Text("Limpar filtros")
+                }
+            }
         }
     }
 }

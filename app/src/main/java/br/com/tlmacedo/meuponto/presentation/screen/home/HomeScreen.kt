@@ -1,6 +1,8 @@
 // Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/presentation/screen/home/HomeScreen.kt
 package br.com.tlmacedo.meuponto.presentation.screen.home
 
+import br.com.tlmacedo.meuponto.util.toLocalDateFromDatePicker
+import br.com.tlmacedo.meuponto.util.toDatePickerMillis
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -87,24 +89,31 @@ fun HomeScreen(
                 is HomeUiEvent.MostrarMensagem -> {
                     snackbarHostState.showSnackbar(event.mensagem)
                 }
+
                 is HomeUiEvent.MostrarErro -> {
                     snackbarHostState.showSnackbar(event.mensagem)
                 }
+
                 is HomeUiEvent.NavegarParaHistorico -> {
                     onNavigateToHistory()
                 }
+
                 is HomeUiEvent.NavegarParaConfiguracoes -> {
                     onNavigateToSettings()
                 }
+
                 is HomeUiEvent.NavegarParaEditarPonto -> {
                     onNavigateToEditPonto(event.pontoId)
                 }
+
                 is HomeUiEvent.EmpregoTrocado -> {
                     snackbarHostState.showSnackbar("Emprego alterado: ${event.nomeEmprego}")
                 }
+
                 is HomeUiEvent.NavegarParaNovoEmprego -> {
                     onNavigateToNovoEmprego()
                 }
+
                 is HomeUiEvent.NavegarParaEditarEmprego -> {
                     onNavigateToEditarEmprego(event.empregoId)
                 }
@@ -154,9 +163,7 @@ fun HomeScreen(
                 TextButton(
                     onClick = {
                         datePickerState.selectedDateMillis?.let { millis ->
-                            val selectedDate = java.time.Instant.ofEpochMilli(millis)
-                                .atZone(ZoneOffset.UTC)
-                                .toLocalDate()
+                            val selectedDate = millis.toLocalDateFromDatePicker()
                             viewModel.onAction(HomeAction.SelecionarData(selectedDate))
                         }
                         viewModel.onAction(HomeAction.FecharDatePicker)
@@ -257,7 +264,7 @@ internal fun HomeContent(
 ) {
     Column(modifier = modifier.fillMaxSize()) {
         // ================================================================
-        // HEADER FIXO - DateNavigator + ResumoCard + Botão (não rola)
+        // HEADER FIXO - DateNavigator + ResumoCard + Ausência + Botão (não rola)
         // ================================================================
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -307,6 +314,13 @@ internal fun HomeContent(
                 mostrarContador = uiState.deveExibirContador
             )
 
+            // Banner de Ausência (FIXO)
+            if (uiState.temAusencia) {
+                uiState.ausenciaDoDia?.let { ausencia ->
+                    AusenciaBanner(ausencia = ausencia)
+                }
+            }
+
             // Botão de Registrar Ponto (FIXO)
             if (uiState.podeRegistrarPontoAutomatico) {
                 RegistrarPontoButton(
@@ -322,6 +336,21 @@ internal fun HomeContent(
                     onRegistrarManual = { onAction(HomeAction.AbrirTimePickerDialog) }
                 )
             }
+
+            // Banner de Feriado (se houver)
+            if (uiState.isFeriado) {
+                FeriadoBanner(feriados = uiState.feriadosDoDia)
+            }
+
+            // Aviso de data futura
+            if (uiState.isFuturo) {
+                FutureDateWarning()
+            }
+
+            // Aviso de sem emprego
+            if (!uiState.temEmpregoAtivo) {
+                NoEmpregoWarning()
+            }
         }
 
         // ================================================================
@@ -332,36 +361,6 @@ internal fun HomeContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            // Banner de Feriado (se houver)
-            if (uiState.isFeriado) {
-                item(key = "feriado_banner") {
-                    FeriadoBanner(feriados = uiState.feriadosDoDia)
-                }
-            }
-
-            // Banner de Ausência
-            if (uiState.temAusencia) {
-                item(key = "ausencia_banner") {
-                    uiState.ausenciaDoDia?.let { ausencia ->
-                        AusenciaBanner(ausencia = ausencia)
-                    }
-                }
-            }
-
-            // Aviso de data futura
-            if (uiState.isFuturo) {
-                item(key = "futuro_warning") {
-                    FutureDateWarning()
-                }
-            }
-
-            // Aviso de sem emprego
-            if (!uiState.temEmpregoAtivo) {
-                item(key = "no_emprego_warning") {
-                    NoEmpregoWarning()
-                }
-            }
-
             // Seção de Registros de Ponto
             if (uiState.temPontos) {
                 // Divisor e título

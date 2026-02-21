@@ -1,4 +1,4 @@
-// Arquivo: Converters.kt
+// Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/data/local/database/converter/Converters.kt
 package br.com.tlmacedo.meuponto.data.local.database.converter
 
 import androidx.room.TypeConverter
@@ -17,7 +17,7 @@ import java.time.format.DateTimeFormatter
  *
  * @author Thiago
  * @since 1.0.0
- * @updated 2.1.0 - Removido conversor de TipoPonto (tipo calculado em runtime)
+ * @updated 5.5.0 - Removido conversor para SubTipoFolga
  */
 class Converters {
 
@@ -74,6 +74,7 @@ class Converters {
     @TypeConverter
     fun toAcaoAuditoria(value: String?): AcaoAuditoria? = value?.let { AcaoAuditoria.valueOf(it) }
 
+    // TipoAusencia Enum Converters
     @TypeConverter
     fun fromTipoAusencia(value: TipoAusencia): String = value.name
 

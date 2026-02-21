@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalTime
 import javax.inject.Inject
 
 /**
@@ -28,6 +29,7 @@ import javax.inject.Inject
  *
  * @author Thiago
  * @since 4.0.0
+ * @updated 5.5.0 - Removido SubTipoFolga
  */
 @HiltViewModel
 class AusenciaFormViewModel @Inject constructor(
@@ -56,17 +58,14 @@ class AusenciaFormViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            // Obter emprego ativo usando o método suspend
             val empregoId = when (val resultado = obterEmpregoAtivoUseCase()) {
                 is ObterEmpregoAtivoUseCase.Resultado.Sucesso -> resultado.emprego.id
                 else -> 0L
             }
 
             if (ausenciaId > 0) {
-                // Modo edição
                 carregarAusencia(ausenciaId)
             } else {
-                // Modo criação
                 val tipo = tipoInicial?.let {
                     runCatching { TipoAusencia.valueOf(it) }.getOrNull()
                 } ?: TipoAusencia.FERIAS
@@ -93,19 +92,7 @@ class AusenciaFormViewModel @Inject constructor(
         val ausencia = ausenciaRepository.buscarPorId(id)
 
         if (ausencia != null) {
-            _uiState.update {
-                it.copy(
-                    id = ausencia.id,
-                    empregoId = ausencia.empregoId,
-                    tipo = ausencia.tipo,
-                    dataInicio = ausencia.dataInicio,
-                    dataFim = ausencia.dataFim,
-                    descricao = ausencia.descricao ?: "",
-                    observacao = ausencia.observacao ?: "",
-                    isEdicao = true,
-                    isLoading = false
-                )
-            }
+            _uiState.update { AusenciaFormUiState.fromAusencia(ausencia).copy(isLoading = false) }
         } else {
             _uiState.update { it.copy(isLoading = false, erro = "Ausência não encontrada") }
         }
@@ -113,14 +100,29 @@ class AusenciaFormViewModel @Inject constructor(
 
     fun onAction(action: AusenciaFormAction) {
         when (action) {
-            // Campos
+            // ================================================================
+            // TIPO DE AUSÊNCIA
+            // ================================================================
             is AusenciaFormAction.SelecionarTipo -> selecionarTipo(action.tipo)
+            is AusenciaFormAction.AbrirTipoSelector -> {
+                _uiState.update { it.copy(showTipoSelector = true) }
+            }
+            is AusenciaFormAction.FecharTipoSelector -> {
+                _uiState.update { it.copy(showTipoSelector = false) }
+            }
+
+            // ================================================================
+            // PERÍODO
+            // ================================================================
+            is AusenciaFormAction.SelecionarModoPeriodo -> {
+                _uiState.update { it.copy(modoPeriodo = action.modo) }
+            }
             is AusenciaFormAction.SelecionarDataInicio -> selecionarDataInicio(action.data)
             is AusenciaFormAction.SelecionarDataFim -> selecionarDataFim(action.data)
-            is AusenciaFormAction.AtualizarDescricao -> atualizarDescricao(action.descricao)
-            is AusenciaFormAction.AtualizarObservacao -> atualizarObservacao(action.observacao)
-
-            // Dialogs
+            is AusenciaFormAction.AtualizarQuantidadeDias -> {
+                val dias = action.dias.coerceIn(1, 365)
+                _uiState.update { it.copy(quantidadeDias = dias) }
+            }
             is AusenciaFormAction.AbrirDatePickerInicio -> {
                 _uiState.update { it.copy(showDatePickerInicio = true) }
             }
@@ -133,14 +135,122 @@ class AusenciaFormViewModel @Inject constructor(
             is AusenciaFormAction.FecharDatePickerFim -> {
                 _uiState.update { it.copy(showDatePickerFim = false) }
             }
-            is AusenciaFormAction.AbrirTipoSelector -> {
-                _uiState.update { it.copy(showTipoSelector = true) }
+
+            // ================================================================
+            // HORÁRIOS (DECLARAÇÃO)
+            // ================================================================
+            is AusenciaFormAction.SelecionarHoraInicio -> {
+                _uiState.update { it.copy(horaInicio = action.hora, showTimePickerInicio = false) }
             }
-            is AusenciaFormAction.FecharTipoSelector -> {
-                _uiState.update { it.copy(showTipoSelector = false) }
+            is AusenciaFormAction.AtualizarDuracaoDeclaracao -> {
+                _uiState.update { state ->
+                    val novoState = state.copy(
+                        duracaoDeclaracaoHoras = action.horas.coerceIn(0, 12),
+                        duracaoDeclaracaoMinutos = action.minutos.coerceIn(0, 59),
+                        showDuracaoDeclaracaoPicker = false
+                    )
+                    // Ajustar abono se necessário
+                    if (novoState.duracaoAbonoTotalMinutos > novoState.duracaoDeclaracaoTotalMinutos) {
+                        novoState.copy(
+                            duracaoAbonoHoras = action.horas,
+                            duracaoAbonoMinutos = action.minutos
+                        )
+                    } else {
+                        novoState
+                    }
+                }
+            }
+            is AusenciaFormAction.AtualizarDuracaoAbono -> {
+                _uiState.update { state ->
+                    val novasHoras = action.horas.coerceIn(0, 12)
+                    val novosMinutos = action.minutos.coerceIn(0, 59)
+                    val totalAbono = novasHoras * 60 + novosMinutos
+                    val totalDeclaracao = state.duracaoDeclaracaoTotalMinutos
+
+                    // Não permitir abono maior que declaração
+                    if (totalAbono <= totalDeclaracao) {
+                        state.copy(
+                            duracaoAbonoHoras = novasHoras,
+                            duracaoAbonoMinutos = novosMinutos,
+                            showDuracaoAbonoPicker = false
+                        )
+                    } else {
+                        state.copy(
+                            erro = "O tempo de abono não pode ser maior que a duração da declaração",
+                            showDuracaoAbonoPicker = false
+                        )
+                    }
+                }
+            }
+            is AusenciaFormAction.AbrirTimePickerInicio -> {
+                _uiState.update { it.copy(showTimePickerInicio = true) }
+            }
+            is AusenciaFormAction.FecharTimePickerInicio -> {
+                _uiState.update { it.copy(showTimePickerInicio = false) }
+            }
+            is AusenciaFormAction.AbrirDuracaoDeclaracaoPicker -> {
+                _uiState.update { it.copy(showDuracaoDeclaracaoPicker = true) }
+            }
+            is AusenciaFormAction.FecharDuracaoDeclaracaoPicker -> {
+                _uiState.update { it.copy(showDuracaoDeclaracaoPicker = false) }
+            }
+            is AusenciaFormAction.AbrirDuracaoAbonoPicker -> {
+                _uiState.update { it.copy(showDuracaoAbonoPicker = true) }
+            }
+            is AusenciaFormAction.FecharDuracaoAbonoPicker -> {
+                _uiState.update { it.copy(showDuracaoAbonoPicker = false) }
             }
 
-            // Ações principais
+            // ================================================================
+            // TEXTOS
+            // ================================================================
+            is AusenciaFormAction.AtualizarDescricao -> {
+                _uiState.update { it.copy(descricao = action.descricao) }
+            }
+            is AusenciaFormAction.AtualizarObservacao -> {
+                _uiState.update { it.copy(observacao = action.observacao) }
+            }
+            is AusenciaFormAction.AtualizarPeriodoAquisitivo -> {
+                _uiState.update { it.copy(periodoAquisitivo = action.periodo) }
+            }
+
+            // ================================================================
+            // ANEXO DE IMAGEM
+            // ================================================================
+            is AusenciaFormAction.SelecionarImagem -> {
+                _uiState.update {
+                    it.copy(
+                        imagemUri = action.uri,
+                        imagemNome = action.nome,
+                        showImagePicker = false
+                    )
+                }
+            }
+            is AusenciaFormAction.RemoverImagem -> {
+                _uiState.update { it.copy(imagemUri = null, imagemNome = null) }
+            }
+            is AusenciaFormAction.AbrirImagePicker -> {
+                _uiState.update { it.copy(showImagePicker = true) }
+            }
+            is AusenciaFormAction.FecharImagePicker -> {
+                _uiState.update { it.copy(showImagePicker = false) }
+            }
+            is AusenciaFormAction.AbrirCamera -> {
+                viewModelScope.launch {
+                    _uiState.update { it.copy(showImagePicker = false) }
+                    _uiEvent.emit(AusenciaFormUiEvent.AbrirCamera)
+                }
+            }
+            is AusenciaFormAction.AbrirGaleria -> {
+                viewModelScope.launch {
+                    _uiState.update { it.copy(showImagePicker = false) }
+                    _uiEvent.emit(AusenciaFormUiEvent.AbrirGaleria)
+                }
+            }
+
+            // ================================================================
+            // AÇÕES PRINCIPAIS
+            // ================================================================
             is AusenciaFormAction.Salvar -> salvar()
             is AusenciaFormAction.Cancelar -> {
                 viewModelScope.launch {
@@ -154,11 +264,15 @@ class AusenciaFormViewModel @Inject constructor(
     }
 
     private fun selecionarTipo(tipo: TipoAusencia) {
-        _uiState.update {
-            it.copy(
+        _uiState.update { state ->
+            state.copy(
                 tipo = tipo,
-                descricao = if (it.descricao.isBlank()) tipo.descricao else it.descricao,
-                showTipoSelector = false
+                descricao = if (state.descricao.isBlank()) tipo.descricao else state.descricao,
+                showTipoSelector = false,
+                // Reset campos específicos ao mudar tipo
+                horaInicio = if (tipo == TipoAusencia.DECLARACAO) LocalTime.of(8, 0) else state.horaInicio,
+                periodoAquisitivo = if (tipo == TipoAusencia.FERIAS) state.periodoAquisitivo else "",
+                imagemUri = if (tipo.permiteAnexo) state.imagemUri else null
             )
         }
     }
@@ -184,24 +298,17 @@ class AusenciaFormViewModel @Inject constructor(
         }
     }
 
-    private fun atualizarDescricao(descricao: String) {
-        _uiState.update { it.copy(descricao = descricao) }
-    }
-
-    private fun atualizarObservacao(observacao: String) {
-        _uiState.update { it.copy(observacao = observacao) }
-    }
-
     private fun salvar() {
         val state = _uiState.value
 
-        if (!state.isFormValido) {
-            _uiState.update { it.copy(erro = "Preencha todos os campos obrigatórios") }
+        // Validação
+        state.mensagemValidacao?.let { mensagem ->
+            _uiState.update { it.copy(erro = mensagem) }
             return
         }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isSalvando = true) }
+            _uiState.update { it.copy(isSalvando = true, erro = null) }
 
             val ausencia = state.toAusencia()
 

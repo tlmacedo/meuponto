@@ -3,29 +3,17 @@ package br.com.tlmacedo.meuponto.domain.model.ausencia
 
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import java.util.Locale
 
 /**
- * Representa uma ausência registrada no sistema.
- *
- * Ausências podem ser:
- * - De um único dia ou um período (dataInicio até dataFim)
- * - De diferentes tipos com comportamentos distintos no cálculo
- * - Associadas a um emprego específico
- *
- * @property id Identificador único da ausência
- * @property empregoId ID do emprego associado
- * @property tipo Tipo da ausência (férias, atestado, folga, etc.)
- * @property dataInicio Data de início da ausência
- * @property dataFim Data de fim da ausência (igual a dataInicio se for um único dia)
- * @property descricao Descrição ou motivo da ausência
- * @property observacao Observação adicional
- * @property ativo Se a ausência está ativa (não foi cancelada)
- * @property criadoEm Data/hora de criação
- * @property atualizadoEm Data/hora da última atualização
+ * Modelo de domínio para Ausência.
  *
  * @author Thiago
  * @since 4.0.0
+ * @updated 5.5.0 - Removido SubTipoFolga, adicionadas propriedades auxiliares
  */
 data class Ausencia(
     val id: Long = 0,
@@ -35,14 +23,141 @@ data class Ausencia(
     val dataFim: LocalDate = dataInicio,
     val descricao: String? = null,
     val observacao: String? = null,
+
+    // Campos específicos para DECLARACAO
+    val horaInicio: LocalTime? = null,
+    val duracaoDeclaracaoMinutos: Int? = null,
+    val duracaoAbonoMinutos: Int? = null,
+
+    // Campo para FERIAS
+    val periodoAquisitivo: String? = null,
+
+    // Anexo de imagem
+    val imagemUri: String? = null,
+
+    // Campos de controle
     val ativo: Boolean = true,
     val criadoEm: LocalDateTime = LocalDateTime.now(),
     val atualizadoEm: LocalDateTime = LocalDateTime.now()
 ) {
-    init {
-        require(dataFim >= dataInicio) {
-            "Data fim ($dataFim) deve ser maior ou igual à data início ($dataInicio)"
-        }
+    companion object {
+        private val localeBR = Locale("pt", "BR")
+        private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy", localeBR)
+        private val dateFormatterShort = DateTimeFormatter.ofPattern("dd/MM", localeBR)
+        private val dateFormatterFull = DateTimeFormatter.ofPattern("dd 'de' MMMM", localeBR)
+
+        /**
+         * Cria ausência de férias.
+         */
+        fun criarFerias(
+            empregoId: Long,
+            dataInicio: LocalDate,
+            dataFim: LocalDate,
+            periodoAquisitivo: String
+        ): Ausencia = Ausencia(
+            empregoId = empregoId,
+            tipo = TipoAusencia.FERIAS,
+            dataInicio = dataInicio,
+            dataFim = dataFim,
+            descricao = TipoAusencia.FERIAS.descricao,
+            periodoAquisitivo = periodoAquisitivo
+        )
+
+        /**
+         * Cria ausência de atestado.
+         */
+        fun criarAtestado(
+            empregoId: Long,
+            dataInicio: LocalDate,
+            dataFim: LocalDate = dataInicio,
+            motivo: String,
+            imagemUri: String? = null
+        ): Ausencia = Ausencia(
+            empregoId = empregoId,
+            tipo = TipoAusencia.ATESTADO,
+            dataInicio = dataInicio,
+            dataFim = dataFim,
+            descricao = TipoAusencia.ATESTADO.descricao,
+            observacao = motivo,
+            imagemUri = imagemUri
+        )
+
+        /**
+         * Cria ausência de declaração.
+         */
+        fun criarDeclaracao(
+            empregoId: Long,
+            data: LocalDate,
+            horaInicio: LocalTime,
+            duracaoDeclaracaoMinutos: Int,
+            duracaoAbonoMinutos: Int,
+            motivo: String,
+            imagemUri: String? = null
+        ): Ausencia = Ausencia(
+            empregoId = empregoId,
+            tipo = TipoAusencia.DECLARACAO,
+            dataInicio = data,
+            dataFim = data,
+            descricao = TipoAusencia.DECLARACAO.descricao,
+            observacao = motivo,
+            horaInicio = horaInicio,
+            duracaoDeclaracaoMinutos = duracaoDeclaracaoMinutos,
+            duracaoAbonoMinutos = duracaoAbonoMinutos,
+            imagemUri = imagemUri
+        )
+
+        /**
+         * Cria falta justificada.
+         */
+        fun criarFaltaJustificada(
+            empregoId: Long,
+            dataInicio: LocalDate,
+            dataFim: LocalDate = dataInicio,
+            motivo: String,
+            imagemUri: String? = null
+        ): Ausencia = Ausencia(
+            empregoId = empregoId,
+            tipo = TipoAusencia.FALTA_JUSTIFICADA,
+            dataInicio = dataInicio,
+            dataFim = dataFim,
+            descricao = TipoAusencia.FALTA_JUSTIFICADA.descricao,
+            observacao = motivo,
+            imagemUri = imagemUri
+        )
+
+        /**
+         * Cria folga (desconta do banco de horas).
+         */
+        fun criarFolga(
+            empregoId: Long,
+            dataInicio: LocalDate,
+            dataFim: LocalDate = dataInicio,
+            observacao: String? = null
+        ): Ausencia = Ausencia(
+            empregoId = empregoId,
+            tipo = TipoAusencia.FOLGA,
+            dataInicio = dataInicio,
+            dataFim = dataFim,
+            descricao = TipoAusencia.FOLGA.descricao,
+            observacao = observacao
+        )
+
+        /**
+         * Cria falta injustificada.
+         */
+        fun criarFaltaInjustificada(
+            empregoId: Long,
+            dataInicio: LocalDate,
+            dataFim: LocalDate = dataInicio,
+            observacao: String? = null
+        ): Ausencia = Ausencia(
+            empregoId = empregoId,
+            tipo = TipoAusencia.FALTA_INJUSTIFICADA,
+            dataInicio = dataInicio,
+            dataFim = dataFim,
+            descricao = TipoAusencia.FALTA_INJUSTIFICADA.descricao,
+            observacao = observacao
+        )
     }
 
     // ========================================================================
@@ -50,253 +165,109 @@ data class Ausencia(
     // ========================================================================
 
     /**
-     * Verifica se a ausência é de apenas um dia.
-     */
-    val isDiaUnico: Boolean
-        get() = dataInicio == dataFim
-
-    /**
-     * Verifica se a ausência abrange um período (mais de um dia).
-     */
-    val isPeriodo: Boolean
-        get() = dataInicio != dataFim
-
-    /**
-     * Quantidade de dias da ausência (inclusive).
+     * Quantidade de dias da ausência.
      */
     val quantidadeDias: Int
         get() = ChronoUnit.DAYS.between(dataInicio, dataFim).toInt() + 1
 
     /**
-     * Verifica se a ausência zera a jornada (é abonada).
+     * Hora de fim da declaração (calculada).
      */
-    val zeraJornada: Boolean
-        get() = tipo.zeraJornada
+    val horaFimDeclaracao: LocalTime?
+        get() = horaInicio?.plusMinutes(duracaoDeclaracaoMinutos?.toLong() ?: 0)
 
     /**
-     * Verifica se é ausência justificada.
+     * Verifica se é uma ausência de dia único.
      */
-    val isJustificada: Boolean
-        get() = tipo.isJustificada
+    val isDiaUnico: Boolean
+        get() = dataInicio == dataFim
 
     /**
-     * Verifica se pode requerer documento comprobatório.
+     * Verifica se é um período (mais de um dia).
      */
-    val requerDocumento: Boolean
-        get() = tipo.requerDocumento
+    val isPeriodo: Boolean
+        get() = dataInicio != dataFim
 
     /**
-     * Emoji representativo do tipo.
+     * Emoji do tipo de ausência.
      */
     val emoji: String
         get() = tipo.emoji
 
     /**
-     * Descrição do tipo.
+     * Descrição do tipo de ausência.
      */
     val tipoDescricao: String
         get() = tipo.descricao
 
-    // ========================================================================
-    // VERIFICAÇÕES DE DATA
-    // ========================================================================
-
     /**
-     * Verifica se uma data específica está dentro do período da ausência.
-     *
-     * @param data Data a verificar
-     * @return true se a data está dentro do período
+     * Indica se a ausência é justificada.
      */
-    fun contemData(data: LocalDate): Boolean {
-        return data in dataInicio..dataFim
-    }
-
-    /**
-     * Verifica se a ausência ocorre em uma data específica.
-     * Alias para contemData() para manter consistência com Feriado.
-     */
-    fun ocorreEm(data: LocalDate): Boolean = contemData(data)
-
-    /**
-     * Verifica se a ausência está em andamento (inclui hoje).
-     */
-    fun emAndamento(hoje: LocalDate = LocalDate.now()): Boolean {
-        return hoje in dataInicio..dataFim
-    }
-
-    /**
-     * Verifica se a ausência já passou.
-     */
-    fun jaPassou(hoje: LocalDate = LocalDate.now()): Boolean {
-        return dataFim < hoje
-    }
-
-    /**
-     * Verifica se a ausência é futura.
-     */
-    fun isFutura(hoje: LocalDate = LocalDate.now()): Boolean {
-        return dataInicio > hoje
-    }
-
-    /**
-     * Verifica se há sobreposição com outra ausência.
-     *
-     * @param outra Outra ausência para verificar
-     * @return true se há sobreposição de datas
-     */
-    fun sobrepoe(outra: Ausencia): Boolean {
-        return dataInicio <= outra.dataFim && dataFim >= outra.dataInicio
-    }
-
-    /**
-     * Verifica se há sobreposição com um período.
-     *
-     * @param inicio Início do período
-     * @param fim Fim do período
-     * @return true se há sobreposição
-     */
-    fun sobrepoeComPeriodo(inicio: LocalDate, fim: LocalDate): Boolean {
-        return dataInicio <= fim && dataFim >= inicio
-    }
+    val isJustificada: Boolean
+        get() = tipo.isJustificada
 
     // ========================================================================
-    // FORMATADORES
+    // FORMATAÇÕES
     // ========================================================================
 
     /**
-     * Retorna período formatado para exibição.
-     * Ex: "20/02/2026" ou "20/02/2026 - 25/02/2026"
+     * Formata o período da ausência.
+     * - Dia único: "21/02/2026"
+     * - Período: "21/02 - 25/02/2026"
      */
     fun formatarPeriodo(): String {
         return if (isDiaUnico) {
-            formatarData(dataInicio)
+            dataInicio.format(dateFormatter)
         } else {
-            "${formatarData(dataInicio)} - ${formatarData(dataFim)}"
+            "${dataInicio.format(dateFormatterShort)} - ${dataFim.format(dateFormatter)}"
         }
     }
 
     /**
-     * Retorna descrição curta para exibição em lista.
-     * Ex: "Férias (5 dias)" ou "Atestado"
+     * Formata o período de forma completa.
+     * - Dia único: "21 de fevereiro"
+     * - Período: "21 de fevereiro - 25 de fevereiro"
      */
-    fun descricaoCurta(): String {
-        return if (isPeriodo) {
-            "${tipo.descricao} ($quantidadeDias dias)"
+    fun formatarPeriodoCompleto(): String {
+        return if (isDiaUnico) {
+            dataInicio.format(dateFormatterFull)
         } else {
-            tipo.descricao
+            "${dataInicio.format(dateFormatterFull)} - ${dataFim.format(dateFormatterFull)}"
         }
     }
 
-    private fun formatarData(data: LocalDate): String {
-        return "${data.dayOfMonth.toString().padStart(2, '0')}/" +
-                "${data.monthValue.toString().padStart(2, '0')}/" +
-                "${data.year}"
+    /**
+     * Formata a duração em texto legível.
+     */
+    fun formatarDuracao(): String {
+        return when {
+            quantidadeDias == 1 -> "1 dia"
+            else -> "$quantidadeDias dias"
+        }
     }
 
     // ========================================================================
-    // COMPANION OBJECT - FACTORY METHODS
+    // MÉTODOS
     // ========================================================================
 
-    companion object {
-        /**
-         * Cria uma ausência de férias.
-         */
-        fun criarFerias(
-            empregoId: Long,
-            dataInicio: LocalDate,
-            dataFim: LocalDate,
-            observacao: String? = null
-        ): Ausencia = Ausencia(
-            empregoId = empregoId,
-            tipo = TipoAusencia.FERIAS,
-            dataInicio = dataInicio,
-            dataFim = dataFim,
-            descricao = "Férias",
-            observacao = observacao
-        )
+    /**
+     * Verifica se a ausência está ativa em uma data específica.
+     */
+    fun isAtivaNaData(data: LocalDate): Boolean {
+        return ativo && !data.isBefore(dataInicio) && !data.isAfter(dataFim)
+    }
 
-        /**
-         * Cria uma ausência de atestado médico.
-         */
-        fun criarAtestado(
-            empregoId: Long,
-            dataInicio: LocalDate,
-            dataFim: LocalDate = dataInicio,
-            descricao: String? = null,
-            observacao: String? = null
-        ): Ausencia = Ausencia(
-            empregoId = empregoId,
-            tipo = TipoAusencia.ATESTADO,
-            dataInicio = dataInicio,
-            dataFim = dataFim,
-            descricao = descricao ?: "Atestado médico",
-            observacao = observacao
-        )
+    /**
+     * Verifica se a ausência contém uma data específica.
+     */
+    fun contemData(data: LocalDate): Boolean {
+        return !data.isBefore(dataInicio) && !data.isAfter(dataFim)
+    }
 
-        /**
-         * Cria uma ausência de declaração de comparecimento.
-         */
-        fun criarDeclaracao(
-            empregoId: Long,
-            data: LocalDate,
-            descricao: String,
-            observacao: String? = null
-        ): Ausencia = Ausencia(
-            empregoId = empregoId,
-            tipo = TipoAusencia.DECLARACAO,
-            dataInicio = data,
-            dataFim = data,
-            descricao = descricao,
-            observacao = observacao
-        )
-
-        /**
-         * Cria uma folga (compensação de banco de horas).
-         */
-        fun criarFolga(
-            empregoId: Long,
-            data: LocalDate,
-            observacao: String? = null
-        ): Ausencia = Ausencia(
-            empregoId = empregoId,
-            tipo = TipoAusencia.FOLGA,
-            dataInicio = data,
-            dataFim = data,
-            descricao = "Folga",
-            observacao = observacao
-        )
-
-        /**
-         * Cria uma falta justificada.
-         */
-        fun criarFaltaJustificada(
-            empregoId: Long,
-            data: LocalDate,
-            descricao: String,
-            observacao: String? = null
-        ): Ausencia = Ausencia(
-            empregoId = empregoId,
-            tipo = TipoAusencia.FALTA_JUSTIFICADA,
-            dataInicio = data,
-            dataFim = data,
-            descricao = descricao,
-            observacao = observacao
-        )
-
-        /**
-         * Cria uma falta injustificada.
-         */
-        fun criarFaltaInjustificada(
-            empregoId: Long,
-            data: LocalDate,
-            observacao: String? = null
-        ): Ausencia = Ausencia(
-            empregoId = empregoId,
-            tipo = TipoAusencia.FALTA_INJUSTIFICADA,
-            dataInicio = data,
-            dataFim = data,
-            descricao = "Falta injustificada",
-            observacao = observacao
-        )
+    /**
+     * Verifica se há sobreposição com outro período.
+     */
+    fun sobrepoeComPeriodo(inicio: LocalDate, fim: LocalDate): Boolean {
+        return !dataFim.isBefore(inicio) && !dataInicio.isAfter(fim)
     }
 }

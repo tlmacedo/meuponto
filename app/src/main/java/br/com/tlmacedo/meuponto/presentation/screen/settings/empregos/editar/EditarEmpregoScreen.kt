@@ -1,6 +1,8 @@
 // Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/presentation/screen/settings/empregos/editar/EditarEmpregoScreen.kt
 package br.com.tlmacedo.meuponto.presentation.screen.settings.empregos.editar
 
+import br.com.tlmacedo.meuponto.util.toLocalDateFromDatePicker
+import br.com.tlmacedo.meuponto.util.toDatePickerMillis
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -74,6 +76,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.tlmacedo.meuponto.domain.model.DiaSemana
 import br.com.tlmacedo.meuponto.domain.model.TipoNsr
 import br.com.tlmacedo.meuponto.presentation.components.MeuPontoTopBar
+import br.com.tlmacedo.meuponto.util.toDatePickerMillis
+import br.com.tlmacedo.meuponto.util.toLocalDateFromDatePicker
 import kotlinx.coroutines.flow.collectLatest
 import java.time.Duration
 import java.time.Instant
@@ -153,15 +157,13 @@ private fun EditarEmpregoContent(
     // DATE PICKER DIALOGS
     if (uiState.showInicioTrabalhoPicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = uiState.dataInicioTrabalho?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
+            initialSelectedDateMillis = uiState.dataInicioTrabalho?.toDatePickerMillis()
         )
         DatePickerDialog(
             onDismissRequest = { onSetShowInicioTrabalhoPicker(false) },
             confirmButton = {
                 TextButton(onClick = {
-                    val date = datePickerState.selectedDateMillis?.let {
-                        Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
-                    }
+                    val date = datePickerState.selectedDateMillis?.toLocalDateFromDatePicker()
                     onAction(EditarEmpregoAction.AlterarDataInicioTrabalho(date))
                 }) { Text("Confirmar") }
             },
@@ -175,14 +177,14 @@ private fun EditarEmpregoContent(
 
     if (uiState.showUltimoFechamentoPicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = uiState.ultimoFechamentoBanco?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
+            initialSelectedDateMillis = uiState.dataInicioTrabalho?.toDatePickerMillis()
         )
         DatePickerDialog(
             onDismissRequest = { onSetShowUltimoFechamentoPicker(false) },
             confirmButton = {
                 TextButton(onClick = {
                     val date = datePickerState.selectedDateMillis?.let {
-                        Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
+                        it.toLocalDateFromDatePicker()
                     }
                     onAction(EditarEmpregoAction.AlterarUltimoFechamentoBanco(date))
                 }) { Text("Confirmar") }

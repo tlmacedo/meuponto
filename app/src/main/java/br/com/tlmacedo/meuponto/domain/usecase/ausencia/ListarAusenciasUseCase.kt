@@ -13,6 +13,7 @@ import javax.inject.Inject
  *
  * @author Thiago
  * @since 4.0.0
+ * @updated 5.6.0 - Adicionado observarTodas
  */
 class ListarAusenciasUseCase @Inject constructor(
     private val ausenciaRepository: AusenciaRepository
@@ -26,10 +27,17 @@ class ListarAusenciasUseCase @Inject constructor(
     }
 
     /**
-     * Observa todas as ausências de um emprego (reativo).
+     * Observa todas as ausências de um emprego (reativo) - apenas ativas.
      */
     fun observarPorEmprego(empregoId: Long): Flow<List<Ausencia>> {
         return ausenciaRepository.observarAtivasPorEmprego(empregoId)
+    }
+
+    /**
+     * Observa TODAS as ausências de um emprego (incluindo inativas).
+     */
+    fun observarTodas(empregoId: Long): Flow<List<Ausencia>> {
+        return ausenciaRepository.observarPorEmprego(empregoId)
     }
 
     /**

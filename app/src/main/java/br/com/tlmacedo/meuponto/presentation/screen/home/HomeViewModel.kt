@@ -301,13 +301,17 @@ class HomeViewModel @Inject constructor(
             // 6. Atualizar versão de jornada no estado
             _uiState.update { it.copy(versaoJornadaAtual = versaoJornada) }
 
+            // 7. Extrair tempo abonado (para DECLARACAO)
+            val tempoAbonadoMinutos = ausencia?.duracaoAbonoMinutos ?: 0
+
             obterPontosDoDiaUseCase(data).collect { pontos ->
-                // 7. Calcular resumo com tipo de dia especial
+                // 8. Calcular resumo com tipo de dia especial e tempo abonado
                 val resumo = calcularResumoDiaUseCase(
                     pontos = pontos,
                     data = data,
                     horarioDiaSemana = horarioDia,
-                    tipoDiaEspecial = tipoDiaEspecial
+                    tipoDiaEspecial = tipoDiaEspecial,
+                    tempoAbonadoMinutos = tempoAbonadoMinutos
                 )
                 val proximoTipo = determinarProximoTipoPontoUseCase(pontos)
 

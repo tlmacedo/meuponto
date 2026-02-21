@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.tlmacedo.meuponto.domain.model.ausencia.Ausencia
 import br.com.tlmacedo.meuponto.domain.model.ausencia.TipoAusencia
+import br.com.tlmacedo.meuponto.domain.usecase.ausencia.AtualizarAusenciaUseCase
 import br.com.tlmacedo.meuponto.domain.usecase.ausencia.ExcluirAusenciaUseCase
 import br.com.tlmacedo.meuponto.domain.usecase.ausencia.ListarAusenciasUseCase
 import br.com.tlmacedo.meuponto.domain.usecase.ausencia.ResultadoExcluirAusencia
@@ -19,7 +20,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.YearMonth
 import javax.inject.Inject
 
 /**
@@ -27,11 +27,13 @@ import javax.inject.Inject
  *
  * @author Thiago
  * @since 4.0.0
+ * @updated 5.6.0 - Filtros múltiplos e lista unificada
  */
 @HiltViewModel
 class AusenciasViewModel @Inject constructor(
     private val listarAusenciasUseCase: ListarAusenciasUseCase,
     private val excluirAusenciaUseCase: ExcluirAusenciaUseCase,
+    private val atualizarAusenciaUseCase: AtualizarAusenciaUseCase,
     private val obterEmpregoAtivoUseCase: ObterEmpregoAtivoUseCase
 ) : ViewModel() {
 
@@ -49,13 +51,11 @@ class AusenciasViewModel @Inject constructor(
 
     fun onAction(action: AusenciasAction) {
         when (action) {
-            // Navegação por mês
-            is AusenciasAction.MesAnterior -> navegarMesAnterior()
-            is AusenciasAction.ProximoMes -> navegarProximoMes()
-            is AusenciasAction.SelecionarMes -> selecionarMes(action.mes)
-
-            // Filtro
-            is AusenciasAction.FiltrarPorTipo -> filtrarPorTipo(action.tipo)
+            // Filtros
+            is AusenciasAction.ToggleTipo -> toggleTipo(action.tipo)
+            is AusenciasAction.FiltroAnoChange -> filtrarPorAno(action.ano)
+            is AusenciasAction.ToggleOrdem -> toggleOrdem()
+            is AusenciasAction.LimparFiltros -> limparFiltros()
 
             // CRUD
             is AusenciasAction.NovaAusencia -> {
@@ -71,6 +71,7 @@ class AusenciasViewModel @Inject constructor(
             is AusenciasAction.SolicitarExclusao -> solicitarExclusao(action.ausencia)
             is AusenciasAction.ConfirmarExclusao -> confirmarExclusao()
             is AusenciasAction.CancelarExclusao -> cancelarExclusao()
+            is AusenciasAction.ToggleAtivo -> toggleAtivo(action.ausencia)
 
             // Geral
             is AusenciasAction.LimparErro -> limparErro()
@@ -84,30 +85,26 @@ class AusenciasViewModel @Inject constructor(
 
     private fun carregarEmpregoAtivo() {
         viewModelScope.launch {
-            // Usa o método observar() que retorna Flow<Emprego?>
             obterEmpregoAtivoUseCase.observar().collect { emprego ->
                 _uiState.update { it.copy(empregoAtivo = emprego) }
                 if (emprego != null) {
-                    carregarAusencias()
+                    carregarTodasAusencias(emprego.id)
                 }
             }
         }
     }
 
-    private fun carregarAusencias() {
+    private fun carregarTodasAusencias(empregoId: Long) {
         ausenciasJob?.cancel()
-
-        val empregoId = _uiState.value.empregoAtivo?.id ?: return
-        val mes = _uiState.value.mesSelecionado
 
         ausenciasJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
             try {
-                listarAusenciasUseCase.observarPorMes(empregoId, mes).collect { ausencias ->
+                listarAusenciasUseCase.observarTodas(empregoId).collect { ausencias ->
                     _uiState.update {
                         it.copy(
-                            ausencias = ausencias.sortedBy { a -> a.dataInicio },
+                            ausencias = ausencias,
                             isLoading = false
                         )
                     }
@@ -123,27 +120,57 @@ class AusenciasViewModel @Inject constructor(
         }
     }
 
-    private fun navegarMesAnterior() {
-        if (_uiState.value.podeNavegaMesAnterior) {
-            val novoMes = _uiState.value.mesSelecionado.minusMonths(1)
-            selecionarMes(novoMes)
+    private fun toggleTipo(tipo: TipoAusencia) {
+        _uiState.update { state ->
+            val novosFiltros = if (tipo in state.filtroTipos) {
+                state.filtroTipos - tipo
+            } else {
+                state.filtroTipos + tipo
+            }
+            state.copy(filtroTipos = novosFiltros)
         }
     }
 
-    private fun navegarProximoMes() {
-        if (_uiState.value.podeNavegarMesProximo) {
-            val novoMes = _uiState.value.mesSelecionado.plusMonths(1)
-            selecionarMes(novoMes)
+    private fun filtrarPorAno(ano: Int?) {
+        _uiState.update { it.copy(filtroAno = ano) }
+    }
+
+    private fun toggleOrdem() {
+        _uiState.update { state ->
+            state.copy(
+                ordemData = when (state.ordemData) {
+                    OrdemData.CRESCENTE -> OrdemData.DECRESCENTE
+                    OrdemData.DECRESCENTE -> OrdemData.CRESCENTE
+                }
+            )
         }
     }
 
-    private fun selecionarMes(mes: YearMonth) {
-        _uiState.update { it.copy(mesSelecionado = mes) }
-        carregarAusencias()
+    private fun limparFiltros() {
+        _uiState.update {
+            it.copy(
+                filtroTipos = emptySet(),
+                filtroAno = null
+            )
+        }
     }
 
-    private fun filtrarPorTipo(tipo: TipoAusencia?) {
-        _uiState.update { it.copy(filtroTipo = tipo) }
+    private fun toggleAtivo(ausencia: Ausencia) {
+        viewModelScope.launch {
+            try {
+                val ausenciaAtualizada = ausencia.copy(ativo = !ausencia.ativo)
+                atualizarAusenciaUseCase(ausenciaAtualizada)
+
+                val mensagem = if (ausenciaAtualizada.ativo) {
+                    "Ausência ativada"
+                } else {
+                    "Ausência desativada"
+                }
+                _uiEvent.emit(AusenciasUiEvent.MostrarMensagem(mensagem))
+            } catch (e: Exception) {
+                _uiEvent.emit(AusenciasUiEvent.MostrarErro("Erro ao atualizar: ${e.message}"))
+            }
+        }
     }
 
     private fun solicitarExclusao(ausencia: Ausencia) {
@@ -185,6 +212,8 @@ class AusenciasViewModel @Inject constructor(
     }
 
     fun recarregar() {
-        carregarAusencias()
+        _uiState.value.empregoAtivo?.let { emprego ->
+            carregarTodasAusencias(emprego.id)
+        }
     }
 }
