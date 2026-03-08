@@ -19,7 +19,7 @@ fun exportarPorCamadas(diretorioRaiz: String, diretorioDestino: String) {
         "DATA" to "/data/",
         "DI" to "/di/",
         "DOMAIN" to "/domain/",
-        "PRESENTATION" to "/presentation/",
+        "PRESENTATION" to "app/src/main/java/br/com/tlmacedo/meuponto/presentation/screen/settings/",
         "UTIL" to "/util/",
         "RESOURCES" to "/src/main/res/",
         "MANIFEST" to "AndroidManifest.xml"
@@ -70,9 +70,10 @@ fun exportarPorCamadas(diretorioRaiz: String, diretorioDestino: String) {
 
 // Execução do script
 val currentDir = File(System.getProperty("user.dir"))
+
 // Se o script for executado de dentro da pasta scripts, sobe um nível para pegar a raiz do projeto
-val caminhoProjeto = if (currentDir.name == "scripts") currentDir.parentFile.absolutePath else currentDir.absolutePath
-val caminhoDestino = File(caminhoProjeto, "export_meu_ponto").absolutePath
+val caminhoProjeto = if (currentDir.name == "scripts") currentDir.parentFile.parentFile.absolutePath else currentDir.absolutePath
+val caminhoDestino = File(currentDir.parentFile, "export_meu_ponto").absolutePath
 
 println("Iniciando exportação do projeto: $caminhoProjeto")
 println("Destino: $caminhoDestino")
