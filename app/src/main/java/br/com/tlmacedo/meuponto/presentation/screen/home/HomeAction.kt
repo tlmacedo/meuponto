@@ -1,6 +1,7 @@
 // Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/presentation/screen/home/HomeAction.kt
 package br.com.tlmacedo.meuponto.presentation.screen.home
 
+import android.net.Uri
 import br.com.tlmacedo.meuponto.domain.model.Emprego
 import br.com.tlmacedo.meuponto.domain.model.Ponto
 import java.time.LocalDate
@@ -11,10 +12,7 @@ import java.time.LocalTime
  *
  * @author Thiago
  * @since 2.0.0
- * @updated 2.5.0 - Adicionadas ações para DatePicker
- * @updated 2.7.0 - Adicionadas ações para navegação de emprego (criar/editar)
- * @updated 3.7.0 - Adicionadas ações para NSR dialog
- * @updated 6.0.0 - Adicionada ação para motivo de exclusão (auditoria)
+ * @updated 9.0.0 - Adicionadas ações para foto de comprovante
  */
 sealed interface HomeAction {
 
@@ -31,14 +29,19 @@ sealed interface HomeAction {
     // AÇÕES DE NSR
     // ══════════════════════════════════════════════════════════════════════
 
-    /** Atualiza o valor do NSR no dialog */
     data class AtualizarNsr(val nsr: String) : HomeAction
-
-    /** Confirma o registro do ponto com NSR */
     data object ConfirmarRegistroComNsr : HomeAction
-
-    /** Cancela o dialog de NSR */
     data object CancelarNsrDialog : HomeAction
+
+    // ══════════════════════════════════════════════════════════════════════
+    // AÇÕES DE FOTO DE COMPROVANTE
+    // ══════════════════════════════════════════════════════════════════════
+
+    /** Seleciona uma imagem de comprovante (da galeria ou câmera) */
+    data class SelecionarFotoComprovante(val uri: Uri) : HomeAction
+
+    /** Remove a foto de comprovante selecionada */
+    data object RemoverFotoComprovante : HomeAction
 
     // ══════════════════════════════════════════════════════════════════════
     // AÇÕES DE EXCLUSÃO DE PONTO
@@ -46,11 +49,7 @@ sealed interface HomeAction {
 
     data class SolicitarExclusao(val ponto: Ponto) : HomeAction
     data object CancelarExclusao : HomeAction
-
-    /** Atualiza o motivo da exclusão no dialog */
     data class AtualizarMotivoExclusao(val motivo: String) : HomeAction
-
-    /** Confirma a exclusão com motivo */
     data object ConfirmarExclusao : HomeAction
 
     // ══════════════════════════════════════════════════════════════════════
@@ -61,11 +60,7 @@ sealed interface HomeAction {
     data object ProximoDia : HomeAction
     data object IrParaHoje : HomeAction
     data class SelecionarData(val data: LocalDate) : HomeAction
-
-    /** Abre o DatePicker para selecionar uma data */
     data object AbrirDatePicker : HomeAction
-
-    /** Fecha o DatePicker */
     data object FecharDatePicker : HomeAction
 
     // ══════════════════════════════════════════════════════════════════════
@@ -75,17 +70,9 @@ sealed interface HomeAction {
     data object AbrirSeletorEmprego : HomeAction
     data object FecharSeletorEmprego : HomeAction
     data class SelecionarEmprego(val emprego: Emprego) : HomeAction
-
-    /** Navega para criar um novo emprego */
     data object NavegarParaNovoEmprego : HomeAction
-
-    /** Navega para editar o emprego ativo */
     data object NavegarParaEditarEmprego : HomeAction
-
-    /** Abre o menu de opções do emprego (long press) */
     data object AbrirMenuEmprego : HomeAction
-
-    /** Fecha o menu de opções do emprego */
     data object FecharMenuEmprego : HomeAction
 
     // ══════════════════════════════════════════════════════════════════════
@@ -103,7 +90,6 @@ sealed interface HomeAction {
     data object AtualizarHora : HomeAction
     data object LimparErro : HomeAction
     data object RecarregarDados : HomeAction
-
 
     // ══════════════════════════════════════════════════════════════════════
     // AÇÕES DE CICLO DE BANCO DE HORAS

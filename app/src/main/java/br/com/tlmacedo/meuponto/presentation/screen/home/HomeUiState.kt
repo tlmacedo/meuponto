@@ -1,6 +1,7 @@
 // Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/presentation/screen/home/HomeUiState.kt
 package br.com.tlmacedo.meuponto.presentation.screen.home
 
+import android.net.Uri
 import br.com.tlmacedo.meuponto.domain.model.BancoHoras
 import br.com.tlmacedo.meuponto.domain.model.CicloBancoHoras
 import br.com.tlmacedo.meuponto.domain.model.ConfiguracaoEmprego
@@ -99,6 +100,8 @@ data class HomeUiState(
     // NSR Dialog
     val showNsrDialog: Boolean = false,
     val nsrPendente: String = "",
+    // Foto de comprovante
+    val fotoComprovanteUri: Uri? = null,
     val horaPendenteParaRegistro: LocalTime? = null,
     // Exclusão de ponto
     val pontoParaExcluir: Ponto? = null,
@@ -142,6 +145,26 @@ data class HomeUiState(
 
     val tipoNsr: TipoNsr
         get() = configuracaoEmprego?.tipoNsr ?: TipoNsr.NUMERICO
+
+    // ========================================================================
+    // FOTO DE COMPROVANTE
+    // ========================================================================
+
+    /** Verifica se foto está habilitada para o emprego */
+    val fotoHabilitada: Boolean
+        get() = configuracaoEmprego?.fotoObrigatoria == true
+
+    /** Verifica se foto é obrigatória (sinônimo de fotoHabilitada por enquanto) */
+    val fotoObrigatoria: Boolean
+        get() = configuracaoEmprego?.fotoObrigatoria == true
+
+    /** Verifica se há uma foto pendente selecionada */
+    val temFotoPendente: Boolean
+        get() = fotoComprovanteUri != null
+
+    /** Verifica se pode prosseguir com registro (considerando foto obrigatória) */
+    val fotoValidaParaRegistro: Boolean
+        get() = !fotoObrigatoria || temFotoPendente
 
     // ========================================================================
     // FERIADOS

@@ -1,6 +1,7 @@
 // Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/presentation/screen/editponto/EditPontoUiState.kt
 package br.com.tlmacedo.meuponto.presentation.screen.editponto
 
+import android.net.Uri
 import br.com.tlmacedo.meuponto.domain.model.ConfiguracaoEmprego
 import br.com.tlmacedo.meuponto.domain.model.MotivoEdicao
 import br.com.tlmacedo.meuponto.domain.model.Ponto
@@ -17,6 +18,7 @@ import java.util.Locale
  *
  * @author Thiago
  * @since 3.5.0
+ * @updated 9.0.0 - Adicionado suporte a foto de comprovante
  */
 data class EditPontoUiState(
     // Dados do ponto
@@ -34,6 +36,11 @@ data class EditPontoUiState(
     val longitude: Double? = null,
     val endereco: String = "",
     val observacao: String = "",
+
+    // Foto de comprovante
+    val fotoComprovantePath: String? = null,
+    val fotoComprovanteUri: Uri? = null,
+    val showFotoPreview: Boolean = false,
 
     // Motivo com dropdown
     val motivoSelecionado: MotivoEdicao = MotivoEdicao.NENHUM,
@@ -75,6 +82,34 @@ data class EditPontoUiState(
     val localizacaoAutomatica: Boolean
         get() = configuracao?.localizacaoAutomatica == true
 
+    val habilitarFoto: Boolean
+        get() = configuracao?.fotoObrigatoria == true
+
+    val fotoObrigatoria: Boolean
+        get() = configuracao?.fotoObrigatoria == true
+
+    // ========================================================================
+    // Foto de comprovante
+    // ========================================================================
+
+    /** Verifica se existe foto (salva ou pendente) */
+    val temFotoComprovante: Boolean
+        get() = fotoComprovanteUri != null || !fotoComprovantePath.isNullOrBlank()
+
+    /** Verifica se há uma nova foto selecionada (ainda não salva) */
+    val temNovaFoto: Boolean
+        get() = fotoComprovanteUri != null
+
+    /** Verifica se a foto foi removida (tinha antes, não tem mais) */
+    val fotoRemovida: Boolean
+        get() = pontoOriginal?.fotoComprovantePath != null &&
+                fotoComprovantePath == null &&
+                fotoComprovanteUri == null
+
+    /** Verifica se a foto foi alterada */
+    val fotoAlterada: Boolean
+        get() = temNovaFoto || fotoRemovida
+
     // ========================================================================
     // Formatação
     // ========================================================================
@@ -105,9 +140,6 @@ data class EditPontoUiState(
     // Motivo - Lógica do dropdown
     // ========================================================================
 
-    /**
-     * Motivo final que será salvo (combinação do selecionado + detalhes).
-     */
     val motivo: String
         get() = when {
             motivoSelecionado == MotivoEdicao.NENHUM -> ""
@@ -117,15 +149,9 @@ data class EditPontoUiState(
             else -> motivoSelecionado.descricao
         }
 
-    /**
-     * Indica se o campo de detalhes deve ser exibido.
-     */
     val mostrarCampoDetalhes: Boolean
         get() = motivoSelecionado.requerDetalhes && motivoSelecionado != MotivoEdicao.NENHUM
 
-    /**
-     * Texto exibido no dropdown.
-     */
     val motivoDisplayText: String
         get() = if (motivoSelecionado == MotivoEdicao.NENHUM) {
             "Selecione um motivo..."
@@ -151,8 +177,11 @@ data class EditPontoUiState(
     val localizacaoValida: Boolean
         get() = !habilitarLocalizacao || temLocalizacao
 
+    val fotoValida: Boolean
+        get() = !fotoObrigatoria || temFotoComprovante
+
     val podeSalvar: Boolean
-        get() = motivoValido && nsrValido && localizacaoValida && !isSaving
+        get() = motivoValido && nsrValido && localizacaoValida && fotoValida && !isSaving
 
     val erroMotivo: String?
         get() = when {
@@ -170,6 +199,9 @@ data class EditPontoUiState(
     val erroLocalizacao: String?
         get() = if (habilitarLocalizacao && !temLocalizacao) "Localização é obrigatória" else null
 
+    val erroFoto: String?
+        get() = if (fotoObrigatoria && !temFotoComprovante) "Foto do comprovante é obrigatória" else null
+
     // ========================================================================
     // Verificação de alterações
     // ========================================================================
@@ -182,7 +214,8 @@ data class EditPontoUiState(
                     latitude != original.latitude ||
                     longitude != original.longitude ||
                     endereco != (original.endereco ?: "") ||
-                    observacao != (original.observacao ?: "")
+                    observacao != (original.observacao ?: "") ||
+                    fotoAlterada
         }
 
     val alteracoesResumo: String
@@ -201,6 +234,16 @@ data class EditPontoUiState(
             }
             if (observacao != (original.observacao ?: "")) {
                 alteracoes.add("Observação alterada")
+            }
+            if (fotoAlterada) {
+                when {
+                    temNovaFoto && original.fotoComprovantePath != null ->
+                        alteracoes.add("Foto substituída")
+                    temNovaFoto ->
+                        alteracoes.add("Foto adicionada")
+                    fotoRemovida ->
+                        alteracoes.add("Foto removida")
+                }
             }
 
             return alteracoes.joinToString("\n")

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Arquivo: app/src/main/res/xml/file_paths.xml -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Diretório interno de comprovantes -->
+    <files-path
+        name="comprovantes"
+        path="comprovantes/" />
+
+    <!-- Cache para fotos temporárias -->
+    <cache-path
+        name="cache"
+        path="/" />
+</paths>

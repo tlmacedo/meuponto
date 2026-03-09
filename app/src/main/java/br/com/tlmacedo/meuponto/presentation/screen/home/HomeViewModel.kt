@@ -1,6 +1,8 @@
 // Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/presentation/screen/home/HomeViewModel.kt
 package br.com.tlmacedo.meuponto.presentation.screen.home
 
+import android.net.Uri
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.tlmacedo.meuponto.domain.model.Emprego
@@ -12,6 +14,7 @@ import br.com.tlmacedo.meuponto.domain.model.feriado.TipoFeriado
 import br.com.tlmacedo.meuponto.domain.repository.ConfiguracaoEmpregoRepository
 import br.com.tlmacedo.meuponto.domain.repository.FechamentoPeriodoRepository
 import br.com.tlmacedo.meuponto.domain.repository.HorarioDiaSemanaRepository
+import br.com.tlmacedo.meuponto.domain.repository.PontoRepository
 import br.com.tlmacedo.meuponto.domain.repository.VersaoJornadaRepository
 import br.com.tlmacedo.meuponto.domain.usecase.ausencia.BuscarAusenciaPorDataUseCase
 import br.com.tlmacedo.meuponto.domain.usecase.banco.FecharCicloUseCase
@@ -28,6 +31,7 @@ import br.com.tlmacedo.meuponto.domain.usecase.ponto.ExcluirPontoUseCase
 import br.com.tlmacedo.meuponto.domain.usecase.ponto.ObterPontosDoDiaUseCase
 import br.com.tlmacedo.meuponto.domain.usecase.ponto.ObterResumoDiaCompletoUseCase
 import br.com.tlmacedo.meuponto.domain.usecase.ponto.RegistrarPontoUseCase
+import br.com.tlmacedo.meuponto.util.ComprovanteImageStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -39,6 +43,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -54,6 +59,7 @@ import kotlin.math.abs
  * @since 2.0.0
  * @updated 6.2.0 - Adicionado suporte a ciclos de banco de horas
  * @updated 6.3.0 - Adicionado suporte a reversão de fechamentos incorretos
+ * @updated 9.0.0 - Adicionado suporte a foto de comprovante
  */
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -73,9 +79,11 @@ class HomeViewModel @Inject constructor(
     private val obterResumoDiaCompletoUseCase: ObterResumoDiaCompletoUseCase,
     private val verificarCicloPendenteUseCase: VerificarCicloPendenteUseCase,
     private val fecharCicloUseCase: FecharCicloUseCase,
+    private val comprovanteImageStorage: ComprovanteImageStorage,
     private val inicializarCiclosRetroativosUseCase: InicializarCiclosRetroativosUseCase,
     private val reverterFechamentoIncorretoUseCase: ReverterFechamentoIncorretoUseCase,
-    private val fechamentoPeriodoRepository: FechamentoPeriodoRepository
+    private val fechamentoPeriodoRepository: FechamentoPeriodoRepository,
+    private val pontoRepository: PontoRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -94,59 +102,6 @@ class HomeViewModel @Inject constructor(
         carregarPontosDoDia()
         carregarBancoHoras()
         iniciarRelogioAtualizado()
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // CORREÇÃO TEMPORÁRIA: Reverter fechamentos incorretos
-        // TODO: Remover após executar uma vez com sucesso!
-        // ═══════════════════════════════════════════════════════════════════════
-        // reverterFechamentosIncorretos()
-    }
-
-    /**
-     * TEMPORÁRIO: Reverte fechamentos de ciclo incorretos.
-     *
-     * O ciclo correto é: 11/08/2025 ~ 10/02/2026
-     * A data de início do ciclo atual deve ser 11/08/2025 (pois ainda não venceu de verdade)
-     *
-     * REMOVER ESTE MÉTODO APÓS EXECUTAR COM SUCESSO!
-     */
-    private fun reverterFechamentosIncorretos() {
-        viewModelScope.launch {
-            // Aguardar emprego ser carregado
-            delay(2000)
-
-            val empregoId = _uiState.value.empregoAtivo?.id
-            if (empregoId == null) {
-                android.util.Log.w("REVERTER_DEBUG", "EmpregoId ainda é null, aguardando...")
-                delay(3000)
-            }
-
-            val empregoIdFinal = _uiState.value.empregoAtivo?.id ?: return@launch
-
-            android.util.Log.d("REVERTER_DEBUG", "Iniciando reversão para emprego: $empregoIdFinal")
-
-            // Data de início do ciclo CORRETA (seu ciclo original)
-            val dataInicioCicloCorreta = LocalDate.of(2025, 8, 11)
-
-            when (val resultado = reverterFechamentoIncorretoUseCase(empregoIdFinal, dataInicioCicloCorreta)) {
-                is ReverterFechamentoIncorretoUseCase.Resultado.Sucesso -> {
-                    android.util.Log.d("REVERTER_DEBUG", "✅ SUCESSO!")
-                    android.util.Log.d("REVERTER_DEBUG", "   Fechamentos removidos: ${resultado.fechamentosRemovidos}")
-                    android.util.Log.d("REVERTER_DEBUG", "   Ajustes removidos: ${resultado.ajustesRemovidos}")
-
-                    // Recarregar dados após correção
-                    carregarBancoHoras()
-                    verificarCicloBancoHoras()
-
-                    _uiEvent.emit(HomeUiEvent.MostrarMensagem(
-                        "Dados corrigidos! ${resultado.fechamentosRemovidos} fechamentos e ${resultado.ajustesRemovidos} ajustes removidos."
-                    ))
-                }
-                is ReverterFechamentoIncorretoUseCase.Resultado.Erro -> {
-                    android.util.Log.e("REVERTER_DEBUG", "❌ ERRO: ${resultado.mensagem}")
-                }
-            }
-        }
     }
 
     fun onAction(action: HomeAction) {
@@ -158,6 +113,8 @@ class HomeViewModel @Inject constructor(
             is HomeAction.AtualizarNsr -> atualizarNsr(action.nsr)
             is HomeAction.ConfirmarRegistroComNsr -> confirmarRegistroComNsr()
             is HomeAction.CancelarNsrDialog -> cancelarNsrDialog()
+            is HomeAction.SelecionarFotoComprovante -> selecionarFotoComprovante(action.uri)
+            is HomeAction.RemoverFotoComprovante -> removerFotoComprovante()
             is HomeAction.EditarPonto -> {
                 viewModelScope.launch {
                     _uiEvent.emit(HomeUiEvent.NavegarParaEditarPonto(action.pontoId))
@@ -206,9 +163,9 @@ class HomeViewModel @Inject constructor(
                 return@launch
             }
 
-            // Inicializar ciclos retroativos - DESABILITADO TEMPORARIAMENTE
-             val resultadoInit = inicializarCiclosRetroativosUseCase(empregoId)
-             android.util.Log.d("CICLO_DEBUG", "inicializarCiclos resultado: $resultadoInit")
+            // Inicializar ciclos retroativos
+            val resultadoInit = inicializarCiclosRetroativosUseCase(empregoId)
+            android.util.Log.d("CICLO_DEBUG", "inicializarCiclos resultado: $resultadoInit")
 
             // Verificar estado do ciclo atual
             val resultado = verificarCicloPendenteUseCase(empregoId)
@@ -481,6 +438,7 @@ class HomeViewModel @Inject constructor(
             _uiState.update { it.copy(fechamentoCicloAnterior = fechamentoRelevante) }
         }
     }
+
     private fun recarregarDados() {
         carregarPontosDoDia()
         carregarBancoHoras()
@@ -647,9 +605,18 @@ class HomeViewModel @Inject constructor(
             return
         }
 
+        // Validar foto obrigatória
+        if (_uiState.value.fotoObrigatoria && _uiState.value.fotoComprovanteUri == null) {
+            viewModelScope.launch {
+                _uiEvent.emit(HomeUiEvent.MostrarErro("Foto do comprovante é obrigatória"))
+            }
+            return
+        }
+
         viewModelScope.launch {
             val data = _uiState.value.dataSelecionada
             val dataHora = LocalDateTime.of(data, hora)
+            val fotoUri = _uiState.value.fotoComprovanteUri
 
             val parametros = RegistrarPontoUseCase.Parametros(
                 empregoId = empregoId,
@@ -659,6 +626,14 @@ class HomeViewModel @Inject constructor(
 
             when (val resultado = registrarPontoUseCase(parametros)) {
                 is RegistrarPontoUseCase.Resultado.Sucesso -> {
+                    // Salvar foto se existir
+                    fotoUri?.let { uri ->
+                        salvarFotoComprovante(uri, resultado.pontoId, empregoId, data)
+                    }
+
+                    // Limpar foto pendente
+                    _uiState.update { it.copy(fotoComprovanteUri = null) }
+
                     val horaFormatada = hora.format(DateTimeFormatter.ofPattern("HH:mm"))
                     val tipoDescricao = _uiState.value.proximoTipo.descricao
                     _uiEvent.emit(
@@ -693,6 +668,76 @@ class HomeViewModel @Inject constructor(
                     }
                 }
             }
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // FOTO DE COMPROVANTE
+    // ══════════════════════════════════════════════════════════════════════
+
+    private fun selecionarFotoComprovante(uri: Uri) {
+        _uiState.update { it.copy(fotoComprovanteUri = uri) }
+    }
+
+    private fun removerFotoComprovante() {
+        _uiState.update { it.copy(fotoComprovanteUri = null) }
+    }
+
+    /**
+     * Cria URI temporário para captura de foto com a câmera.
+     * Usado pelo ComprovanteImagePicker.
+     */
+    fun criarCameraUri(): Uri? {
+        return try {
+            val empregoId = _uiState.value.empregoAtivo?.id ?: return null
+            val data = _uiState.value.dataSelecionada
+
+            val tempFile = comprovanteImageStorage.createTempFileForCamera(empregoId, data)
+            FileProvider.getUriForFile(
+                comprovanteImageStorage.appContext,
+                "${comprovanteImageStorage.appContext.packageName}.fileprovider",
+                tempFile
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("HomeViewModel", "Erro ao criar URI da câmera: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Obtém o diretório base para imagens de comprovantes.
+     * Usado pelo ComprovanteImagePicker para exibir imagens existentes.
+     */
+    fun getComprovantesDirectory(): File? {
+        return try {
+            comprovanteImageStorage.getComprovantesDirectory()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private suspend fun salvarFotoComprovante(
+        uri: Uri,
+        pontoId: Long,
+        empregoId: Long,
+        data: LocalDate
+    ) {
+        try {
+            val relativePath = comprovanteImageStorage.saveFromUri(
+                uri = uri,
+                empregoId = empregoId,
+                pontoId = pontoId,
+                data = data
+            )
+
+            if (relativePath != null) {
+                pontoRepository.atualizarFotoComprovante(pontoId, relativePath)
+                android.util.Log.d("HomeViewModel", "Foto salva: $relativePath")
+            } else {
+                android.util.Log.w("HomeViewModel", "Falha ao salvar foto")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("HomeViewModel", "Erro ao salvar foto: ${e.message}")
         }
     }
 

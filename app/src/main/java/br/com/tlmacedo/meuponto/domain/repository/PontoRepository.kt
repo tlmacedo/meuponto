@@ -15,6 +15,7 @@ import java.time.LocalDate
  * @author Thiago
  * @since 1.0.0
  * @updated 2.0.0 - Adicionado suporte a múltiplos empregos e marcadores
+ * @updated 9.0.0 - Adicionado método para atualizar foto de comprovante
  */
 interface PontoRepository {
 
@@ -50,6 +51,14 @@ interface PontoRepository {
      * @param id Identificador único do ponto
      */
     suspend fun excluirPorId(id: Long)
+
+    /**
+     * Atualiza o caminho da foto de comprovante de um ponto.
+     *
+     * @param pontoId ID do ponto
+     * @param fotoPath Caminho relativo da foto (ou null para remover)
+     */
+    suspend fun atualizarFotoComprovante(pontoId: Long, fotoPath: String?)
 
     // ========================================================================
     // Operações de Leitura - Por ID

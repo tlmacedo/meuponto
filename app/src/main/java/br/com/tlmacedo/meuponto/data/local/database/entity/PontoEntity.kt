@@ -27,12 +27,13 @@ import java.time.LocalTime
  * @property endereco Endereço reverso da localização (opcional)
  * @property marcadorId FK para marcador/tag (opcional)
  * @property justificativaInconsistencia Justificativa para pontos inconsistentes
+ * @property fotoComprovantePath Caminho da foto do comprovante (opcional)
  * @property criadoEm Timestamp de criação do registro
  * @property atualizadoEm Timestamp da última atualização
  *
  * @author Thiago
  * @since 1.0.0
- * @updated 7.0.0 - Adicionado campo horaConsiderada, data e hora separados
+ * @updated 9.0.0 - Adicionado campo fotoComprovantePath para foto do comprovante
  */
 @Entity(
     tableName = "pontos",
@@ -77,6 +78,7 @@ data class PontoEntity(
     val endereco: String? = null,
     val marcadorId: Long? = null,
     val justificativaInconsistencia: String? = null,
+    val fotoComprovantePath: String? = null,
     val criadoEm: LocalDateTime = LocalDateTime.now(),
     val atualizadoEm: LocalDateTime = LocalDateTime.now()
 )
@@ -101,6 +103,7 @@ fun PontoEntity.toDomain(): Ponto = Ponto(
     endereco = endereco,
     marcadorId = marcadorId,
     justificativaInconsistencia = justificativaInconsistencia,
+    fotoComprovantePath = fotoComprovantePath,
     criadoEm = criadoEm,
     atualizadoEm = atualizadoEm
 )
@@ -123,6 +126,7 @@ fun Ponto.toEntity(): PontoEntity = PontoEntity(
     endereco = endereco,
     marcadorId = marcadorId,
     justificativaInconsistencia = justificativaInconsistencia,
+    fotoComprovantePath = fotoComprovantePath,
     criadoEm = criadoEm,
     atualizadoEm = atualizadoEm
 )

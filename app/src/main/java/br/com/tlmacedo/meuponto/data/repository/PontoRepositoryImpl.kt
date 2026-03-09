@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
+import java.time.LocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -53,6 +54,15 @@ class PontoRepositoryImpl @Inject constructor(
 
     override suspend fun buscarPrimeiraData(empregoId: Long): LocalDate? {
         return pontoDao.buscarPrimeiraData(empregoId)
+    }
+
+    override suspend fun atualizarFotoComprovante(pontoId: Long, fotoPath: String?) {
+        val ponto = buscarPorId(pontoId) ?: return
+        val pontoAtualizado = ponto.copy(
+            fotoComprovantePath = fotoPath,
+            atualizadoEm = LocalDateTime.now()
+        )
+        atualizar(pontoAtualizado)
     }
 
     // ========================================================================

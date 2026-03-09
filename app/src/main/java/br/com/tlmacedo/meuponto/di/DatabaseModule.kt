@@ -21,7 +21,7 @@ import javax.inject.Singleton
  *
  * @author Thiago
  * @since 1.0.0
- * @updated 8.0.0 - Migração 19->20: campos de jornada/banco movidos para VersaoJornada
+ * @updated 9.0.0 - Migração 20->21: campo fotoComprovantePath em pontos
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -56,7 +56,8 @@ object DatabaseModule {
                 MIGRATION_16_17,
                 MIGRATION_17_18,
                 MIGRATION_18_19,
-                MIGRATION_19_20  // NOVA MIGRATION
+                MIGRATION_19_20,
+                MIGRATION_20_21  // NOVA MIGRATION - foto comprovante
             )
             .addCallback(createDatabaseCallback())
             .build()

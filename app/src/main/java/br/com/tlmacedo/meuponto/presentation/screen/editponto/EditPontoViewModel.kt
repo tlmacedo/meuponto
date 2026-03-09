@@ -1,6 +1,8 @@
 // Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/presentation/screen/editponto/EditPontoViewModel.kt
 package br.com.tlmacedo.meuponto.presentation.screen.editponto
 
+import android.net.Uri
+import androidx.core.content.FileProvider
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,6 +13,7 @@ import br.com.tlmacedo.meuponto.domain.repository.PontoRepository
 import br.com.tlmacedo.meuponto.domain.usecase.ponto.EditarPontoUseCase
 import br.com.tlmacedo.meuponto.domain.usecase.ponto.ExcluirPontoUseCase
 import br.com.tlmacedo.meuponto.presentation.navigation.MeuPontoDestinations
+import br.com.tlmacedo.meuponto.util.ComprovanteImageStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +23,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 import java.time.LocalDate
 import java.time.LocalTime
 import javax.inject.Inject
@@ -29,6 +33,7 @@ import javax.inject.Inject
  *
  * @author Thiago
  * @since 3.5.0
+ * @updated 9.0.0 - Adicionado suporte a foto de comprovante
  */
 @HiltViewModel
 class EditPontoViewModel @Inject constructor(
@@ -36,7 +41,8 @@ class EditPontoViewModel @Inject constructor(
     private val pontoRepository: PontoRepository,
     private val configuracaoEmpregoRepository: ConfiguracaoEmpregoRepository,
     private val editarPontoUseCase: EditarPontoUseCase,
-    private val excluirPontoUseCase: ExcluirPontoUseCase
+    private val excluirPontoUseCase: ExcluirPontoUseCase,
+    private val comprovanteImageStorage: ComprovanteImageStorage
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EditPontoUiState())
@@ -69,6 +75,12 @@ class EditPontoViewModel @Inject constructor(
             is EditPontoAction.AtualizarMotivoDetalhes -> atualizarMotivoDetalhes(action.detalhes)
             EditPontoAction.AbrirMotivoDropdown -> _uiState.update { it.copy(showMotivoDropdown = true) }
             EditPontoAction.FecharMotivoDropdown -> _uiState.update { it.copy(showMotivoDropdown = false) }
+
+            // Foto de comprovante
+            is EditPontoAction.SelecionarFotoComprovante -> selecionarFotoComprovante(action.uri)
+            EditPontoAction.RemoverFotoComprovante -> removerFotoComprovante()
+            EditPontoAction.AbrirVisualizadorFoto -> _uiState.update { it.copy(showFotoPreview = true) }
+            EditPontoAction.FecharVisualizadorFoto -> _uiState.update { it.copy(showFotoPreview = false) }
 
             // Dialogs
             EditPontoAction.AbrirTimePicker -> _uiState.update { it.copy(showTimePicker = true) }
@@ -131,6 +143,7 @@ class EditPontoViewModel @Inject constructor(
                         longitude = ponto.longitude,
                         endereco = ponto.endereco ?: "",
                         observacao = ponto.observacao ?: "",
+                        fotoComprovantePath = ponto.fotoComprovantePath,
                         configuracao = configuracao
                     )
                 }
@@ -208,6 +221,79 @@ class EditPontoViewModel @Inject constructor(
     }
 
     // ========================================================================
+    // Foto de comprovante
+    // ========================================================================
+
+    private fun selecionarFotoComprovante(uri: Uri) {
+        _uiState.update { it.copy(fotoComprovanteUri = uri) }
+    }
+
+    private fun removerFotoComprovante() {
+        _uiState.update {
+            it.copy(
+                fotoComprovanteUri = null,
+                fotoComprovantePath = null
+            )
+        }
+    }
+
+    /**
+     * Cria URI temporário para captura de foto com a câmera.
+     */
+    fun criarCameraUri(): Uri? {
+        return try {
+            val state = _uiState.value
+            val tempFile = comprovanteImageStorage.createTempFileForCamera(
+                empregoId = state.empregoId,
+                data = state.data
+            )
+            FileProvider.getUriForFile(
+                comprovanteImageStorage.appContext,
+                "${comprovanteImageStorage.appContext.packageName}.fileprovider",
+                tempFile
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("EditPontoViewModel", "Erro ao criar URI da câmera: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Obtém o diretório base para imagens de comprovantes.
+     */
+    fun getComprovantesDirectory(): File? {
+        return try {
+            comprovanteImageStorage.getComprovantesDirectory()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private suspend fun salvarFotoComprovante(uri: Uri, pontoId: Long): String? {
+        return try {
+            val state = _uiState.value
+            comprovanteImageStorage.saveFromUri(
+                uri = uri,
+                empregoId = state.empregoId,
+                pontoId = pontoId,
+                data = state.data
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("EditPontoViewModel", "Erro ao salvar foto: ${e.message}")
+            null
+        }
+    }
+
+    private fun deletarFotoAnterior(path: String?) {
+        if (path.isNullOrBlank()) return
+        try {
+            comprovanteImageStorage.delete(path)
+        } catch (e: Exception) {
+            android.util.Log.e("EditPontoViewModel", "Erro ao deletar foto anterior: ${e.message}")
+        }
+    }
+
+    // ========================================================================
     // Ações principais
     // ========================================================================
 
@@ -215,7 +301,12 @@ class EditPontoViewModel @Inject constructor(
         val state = _uiState.value
 
         if (!state.podeSalvar) {
-            val erros = listOfNotNull(state.erroMotivo, state.erroNsr, state.erroLocalizacao)
+            val erros = listOfNotNull(
+                state.erroMotivo,
+                state.erroNsr,
+                state.erroLocalizacao,
+                state.erroFoto
+            )
             _uiState.update { it.copy(erro = erros.joinToString("\n")) }
             return
         }
@@ -223,30 +314,65 @@ class EditPontoViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
 
-            val parametros = EditarPontoUseCase.Parametros(
-                pontoId = state.pontoId,
-                dataHora = state.dataHora,
-                nsr = state.nsr.ifBlank { null },
-                latitude = state.latitude,
-                longitude = state.longitude,
-                endereco = state.endereco.ifBlank { null },
-                observacao = state.observacao.ifBlank { null },
-                motivo = state.motivo
-            )
+            try {
+                // Processar foto primeiro
+                var novoFotoPath: String? = state.fotoComprovantePath
+                val fotoAnteriorPath = state.pontoOriginal?.fotoComprovantePath
 
-            when (val resultado = editarPontoUseCase(parametros)) {
-                is EditarPontoUseCase.Resultado.Sucesso -> {
-                    _uiEvent.emit(EditPontoUiEvent.Salvo("Ponto atualizado com sucesso"))
-                    _uiEvent.emit(EditPontoUiEvent.Voltar)
+                // Se tem nova foto selecionada
+                if (state.fotoComprovanteUri != null) {
+                    // Deletar foto anterior se existia
+                    deletarFotoAnterior(fotoAnteriorPath)
+
+                    // Salvar nova foto
+                    novoFotoPath = salvarFotoComprovante(state.fotoComprovanteUri, state.pontoId)
+                    if (novoFotoPath == null && state.fotoObrigatoria) {
+                        _uiState.update {
+                            it.copy(isSaving = false, erro = "Erro ao salvar foto do comprovante")
+                        }
+                        return@launch
+                    }
+                } else if (state.fotoRemovida) {
+                    // Foto foi removida
+                    deletarFotoAnterior(fotoAnteriorPath)
+                    novoFotoPath = null
                 }
-                is EditarPontoUseCase.Resultado.Erro -> {
-                    _uiState.update { it.copy(isSaving = false, erro = resultado.mensagem) }
+
+                // Editar ponto
+                val parametros = EditarPontoUseCase.Parametros(
+                    pontoId = state.pontoId,
+                    dataHora = state.dataHora,
+                    nsr = state.nsr.ifBlank { null },
+                    latitude = state.latitude,
+                    longitude = state.longitude,
+                    endereco = state.endereco.ifBlank { null },
+                    observacao = state.observacao.ifBlank { null },
+                    motivo = state.motivo
+                )
+
+                when (val resultado = editarPontoUseCase(parametros)) {
+                    is EditarPontoUseCase.Resultado.Sucesso -> {
+                        // Atualizar foto se foi alterada
+                        if (state.fotoAlterada) {
+                            pontoRepository.atualizarFotoComprovante(state.pontoId, novoFotoPath)
+                        }
+
+                        _uiEvent.emit(EditPontoUiEvent.Salvo("Ponto atualizado com sucesso"))
+                        _uiEvent.emit(EditPontoUiEvent.Voltar)
+                    }
+                    is EditarPontoUseCase.Resultado.Erro -> {
+                        _uiState.update { it.copy(isSaving = false, erro = resultado.mensagem) }
+                    }
+                    is EditarPontoUseCase.Resultado.NaoEncontrado -> {
+                        _uiState.update { it.copy(isSaving = false, erro = "Ponto não encontrado") }
+                    }
+                    is EditarPontoUseCase.Resultado.Validacao -> {
+                        _uiState.update { it.copy(isSaving = false, erro = resultado.erros.joinToString("\n")) }
+                    }
                 }
-                is EditarPontoUseCase.Resultado.NaoEncontrado -> {
-                    _uiState.update { it.copy(isSaving = false, erro = "Ponto não encontrado") }
-                }
-                is EditarPontoUseCase.Resultado.Validacao -> {
-                    _uiState.update { it.copy(isSaving = false, erro = resultado.erros.joinToString("\n")) }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(isSaving = false, erro = "Erro ao salvar: ${e.message}")
                 }
             }
         }
@@ -275,6 +401,9 @@ class EditPontoViewModel @Inject constructor(
 
             when (val resultado = excluirPontoUseCase(parametros)) {
                 is ExcluirPontoUseCase.Resultado.Sucesso -> {
+                    // Deletar foto ao excluir ponto
+                    deletarFotoAnterior(state.pontoOriginal?.fotoComprovantePath)
+
                     _uiEvent.emit(EditPontoUiEvent.Excluido("Ponto excluído com sucesso"))
                     _uiEvent.emit(EditPontoUiEvent.Voltar)
                 }

@@ -28,12 +28,13 @@ import java.time.format.DateTimeFormatter
  * @property endereco Endereço formatado da localização
  * @property marcadorId ID do marcador/tag associado
  * @property justificativaInconsistencia Justificativa para pontos com problema
+ * @property fotoComprovantePath Caminho da foto do comprovante (opcional)
  * @property criadoEm Timestamp de criação
  * @property atualizadoEm Timestamp da última atualização
  *
  * @author Thiago
  * @since 1.0.0
- * @updated 7.0.0 - horaConsiderada agora é persistida no banco (não mais calculada em runtime)
+ * @updated 9.0.0 - Adicionado campo fotoComprovantePath para foto do comprovante
  */
 data class Ponto(
     val id: Long = 0,
@@ -48,6 +49,7 @@ data class Ponto(
     val endereco: String? = null,
     val marcadorId: Long? = null,
     val justificativaInconsistencia: String? = null,
+    val fotoComprovantePath: String? = null,
     val criadoEm: LocalDateTime = LocalDateTime.now(),
     val atualizadoEm: LocalDateTime = LocalDateTime.now()
 ) {
@@ -108,6 +110,10 @@ data class Ponto(
     val temJustificativa: Boolean
         get() = !justificativaInconsistencia.isNullOrBlank()
 
+    /** Verifica se tem foto do comprovante */
+    val temFotoComprovante: Boolean
+        get() = !fotoComprovantePath.isNullOrBlank()
+
     // ========================================================================
     // FORMATADORES
     // ========================================================================
@@ -166,6 +172,16 @@ data class Ponto(
         )
     }
 
+    /**
+     * Cria uma cópia com foto do comprovante.
+     */
+    fun comFotoComprovante(path: String?): Ponto {
+        return copy(
+            fotoComprovantePath = path,
+            atualizadoEm = LocalDateTime.now()
+        )
+    }
+
     companion object {
         /**
          * Cria um novo ponto com horaConsiderada igual a dataHora (sem tolerância).
@@ -179,7 +195,8 @@ data class Ponto(
             latitude: Double? = null,
             longitude: Double? = null,
             endereco: String? = null,
-            marcadorId: Long? = null
+            marcadorId: Long? = null,
+            fotoComprovantePath: String? = null
         ): Ponto {
             val agora = LocalDateTime.now()
             return Ponto(
@@ -192,6 +209,7 @@ data class Ponto(
                 longitude = longitude,
                 endereco = endereco,
                 marcadorId = marcadorId,
+                fotoComprovantePath = fotoComprovantePath,
                 criadoEm = agora,
                 atualizadoEm = agora
             )
@@ -209,7 +227,8 @@ data class Ponto(
             latitude: Double? = null,
             longitude: Double? = null,
             endereco: String? = null,
-            marcadorId: Long? = null
+            marcadorId: Long? = null,
+            fotoComprovantePath: String? = null
         ): Ponto {
             val agora = LocalDateTime.now()
             return Ponto(
@@ -222,6 +241,7 @@ data class Ponto(
                 longitude = longitude,
                 endereco = endereco,
                 marcadorId = marcadorId,
+                fotoComprovantePath = fotoComprovantePath,
                 criadoEm = agora,
                 atualizadoEm = agora
             )
