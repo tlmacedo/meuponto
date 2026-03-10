@@ -14,6 +14,7 @@ import java.time.format.DateTimeFormatter
  * @author Thiago
  * @since 2.0.0
  * @updated 3.0.0 - Refatoração completa do sistema de ciclos de banco de horas
+ * @updated 9.0.0 - Adicionado habilitarFotoComprovante
  */
 data class EditarEmpregoUiState(
     val empregoId: Long? = null,
@@ -36,6 +37,9 @@ data class EditarEmpregoUiState(
     val tipoNsr: TipoNsr = TipoNsr.NUMERICO,
     val habilitarLocalizacao: Boolean = false,
     val localizacaoAutomatica: Boolean = false,
+
+    // FOTO COMPROVANTE
+    val habilitarFotoComprovante: Boolean = false,
 
     // VALIDAÇÕES
     val exigeJustificativaInconsistencia: Boolean = false,

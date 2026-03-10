@@ -1,3 +1,4 @@
+// Arquivo: app/src/main/java/br/com/tlmacedo/meuponto/presentation/screen/settings/main/SettingsMainScreen.kt
 package br.com.tlmacedo.meuponto.presentation.screen.settings.main
 
 import androidx.compose.foundation.layout.Arrangement
@@ -59,7 +60,7 @@ import kotlinx.coroutines.launch
  * Tela principal de configurações do app.
  *
  * Apresenta as configurações organizadas em seções:
- * - Empregos (emprego atual + gerenciamento + troca rápida)
+ * - Empregos (gerenciamento + troca rápida)
  * - Calendário (feriados)
  * - Design (aparência, notificações, privacidade)
  * - Backup e Dados
@@ -67,6 +68,7 @@ import kotlinx.coroutines.launch
  *
  * @author Thiago
  * @since 9.0.0
+ * @updated 9.1.0 - Removido card de Emprego Atual (agora exibido apenas em Gerenciar Empregos)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -152,16 +154,13 @@ fun SettingsMainScreen(
                 )
             }
 
-            // Card do Emprego Atual
+            // Gerenciar Empregos
             item {
-                EmpregoAtualCard(
-                    nomeEmprego = uiState.empregoAtualNome,
-                    versaoVigente = uiState.versaoVigenteDescricao,
-                    totalVersoes = uiState.totalVersoes,
-                    onClick = {
-                        uiState.empregoAtualId?.let { onNavigateToEmpregoEdit(it) }
-                    },
-                    enabled = uiState.temEmpregoConfigurado
+                SettingsNavigationItem(
+                    title = "Gerenciar Empregos",
+                    subtitle = "Adicionar, editar ou excluir empregos",
+                    icon = Icons.Outlined.Business,
+                    onClick = onNavigateToGerenciarEmpregos
                 )
             }
 
@@ -175,16 +174,6 @@ fun SettingsMainScreen(
                         onClick = { showTrocarEmpregoSheet = true }
                     )
                 }
-            }
-
-            // Gerenciar Empregos
-            item {
-                SettingsNavigationItem(
-                    title = "Gerenciar Empregos",
-                    subtitle = "Adicionar, editar ou excluir empregos",
-                    icon = Icons.Outlined.Business,
-                    onClick = onNavigateToGerenciarEmpregos
-                )
             }
 
             // ══════════════════════════════════════════════════════════════
@@ -323,97 +312,6 @@ private fun SettingsSectionHeader(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
         )
-    }
-}
-
-/**
- * Card destacado do emprego atual.
- */
-@Composable
-private fun EmpregoAtualCard(
-    nomeEmprego: String?,
-    versaoVigente: String?,
-    totalVersoes: Int,
-    onClick: () -> Unit,
-    enabled: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        onClick = onClick,
-        enabled = enabled,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(16.dp)
-        ) {
-            // Ícone
-            Icon(
-                imageVector = Icons.Outlined.Business,
-                contentDescription = null,
-                tint = if (enabled) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                modifier = Modifier.size(48.dp)
-            )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            // Informações
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Emprego Atual",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (enabled) {
-                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                )
-
-                Text(
-                    text = nomeEmprego ?: "Nenhum emprego configurado",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (enabled) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                )
-
-                if (enabled && versaoVigente != null) {
-                    Text(
-                        text = versaoVigente,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    )
-                }
-
-                if (enabled && totalVersoes > 0) {
-                    Text(
-                        text = "$totalVersoes versão(ões) de jornada",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
-                    )
-                }
-            }
-
-            // Chevron
-            if (enabled) {
-                Icon(
-                    imageVector = Icons.Outlined.ChevronRight,
-                    contentDescription = "Editar",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        }
     }
 }
 

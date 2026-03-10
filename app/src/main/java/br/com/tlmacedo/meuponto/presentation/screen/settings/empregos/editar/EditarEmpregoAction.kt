@@ -12,6 +12,7 @@ import java.time.LocalDate
  * @author Thiago
  * @since 2.0.0
  * @updated 3.0.0 - Novas ações para ciclo de banco de horas
+ * @updated 9.0.0 - Adicionado AlterarHabilitarFotoComprovante
  */
 sealed class EditarEmpregoAction {
     // Dados básicos
@@ -32,6 +33,9 @@ sealed class EditarEmpregoAction {
     data class AlterarTipoNsr(val tipo: TipoNsr) : EditarEmpregoAction()
     data class AlterarHabilitarLocalizacao(val habilitado: Boolean) : EditarEmpregoAction()
     data class AlterarLocalizacaoAutomatica(val automatica: Boolean) : EditarEmpregoAction()
+
+    // Foto Comprovante
+    data class AlterarHabilitarFotoComprovante(val habilitado: Boolean) : EditarEmpregoAction()
 
     // Validações
     data class AlterarExigeJustificativa(val exigir: Boolean) : EditarEmpregoAction()

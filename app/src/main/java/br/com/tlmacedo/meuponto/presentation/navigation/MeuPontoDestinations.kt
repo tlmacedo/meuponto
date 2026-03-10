@@ -4,7 +4,7 @@ package br.com.tlmacedo.meuponto.presentation.navigation
 /**
  * Destinos de navegação do aplicativo.
  *
- * @updated 8.2.0 - Adicionadas rotas para EmpregoSettings e versões por emprego
+ * @updated 8.3.0 - Adicionadas rotas para Notificações e Privacidade
  */
 object MeuPontoDestinations {
     // Telas principais
@@ -61,9 +61,11 @@ object MeuPontoDestinations {
     // Banco de horas (legacy)
     const val AJUSTES_BANCO_HORAS = "ajustes_banco_horas"
 
-    // Personalização
+    // Personalização e Configurações
     const val MARCADORES = "marcadores"
     const val APARENCIA = "aparencia"
+    const val NOTIFICACOES = "notificacoes"
+    const val PRIVACIDADE = "privacidade"
     const val BACKUP = "backup"
 
     // Configurações globais

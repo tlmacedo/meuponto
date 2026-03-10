@@ -529,6 +529,16 @@ private fun EditarEmpregoContent(
                         )
                     }
                 }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+                // Foto Comprovante - FORA do AnimatedVisibility
+                SwitchOption(
+                    title = "Foto de Comprovante",
+                    description = "Exigir foto no momento do registro de ponto",
+                    checked = uiState.habilitarFotoComprovante,
+                    onCheckedChange = { onAction(EditarEmpregoAction.AlterarHabilitarFotoComprovante(it)) }
+                )
             }
         }
 

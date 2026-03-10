@@ -9,16 +9,6 @@ import br.com.tlmacedo.meuponto.domain.model.ConfiguracaoEmprego
 import br.com.tlmacedo.meuponto.domain.model.TipoNsr
 import java.time.LocalDateTime
 
-/**
- * Entidade Room que armazena configurações de EXIBIÇÃO e COMPORTAMENTO do emprego.
- *
- * Configurações de jornada, banco de horas e período RH foram migradas para
- * VersaoJornadaEntity para permitir versionamento temporal.
- *
- * @author Thiago
- * @since 2.0.0
- * @updated 8.0.0 - Simplificado: campos de jornada/banco migrados para VersaoJornada
- */
 @Entity(
     tableName = "configuracoes_emprego",
     foreignKeys = [
@@ -36,28 +26,23 @@ data class ConfiguracaoEmpregoEntity(
     val id: Long = 0,
     val empregoId: Long,
 
-    // ════════════════════════════════════════════════════════════════════════
-    // NSR (Número Sequencial de Registro)
-    // ════════════════════════════════════════════════════════════════════════
+    // NSR
     val habilitarNsr: Boolean = false,
     val tipoNsr: TipoNsr = TipoNsr.NUMERICO,
 
-    // ════════════════════════════════════════════════════════════════════════
     // LOCALIZAÇÃO
-    // ════════════════════════════════════════════════════════════════════════
     val habilitarLocalizacao: Boolean = false,
     val localizacaoAutomatica: Boolean = false,
     val exibirLocalizacaoDetalhes: Boolean = true,
 
-    // ════════════════════════════════════════════════════════════════════════
+    // FOTO - CAMPO ADICIONADO
+    val fotoObrigatoria: Boolean = false,
+
     // EXIBIÇÃO
-    // ════════════════════════════════════════════════════════════════════════
     val exibirDuracaoTurno: Boolean = true,
     val exibirDuracaoIntervalo: Boolean = true,
 
-    // ════════════════════════════════════════════════════════════════════════
     // AUDITORIA
-    // ════════════════════════════════════════════════════════════════════════
     val criadoEm: LocalDateTime = LocalDateTime.now(),
     val atualizadoEm: LocalDateTime = LocalDateTime.now()
 )
@@ -74,6 +59,7 @@ fun ConfiguracaoEmpregoEntity.toDomain(): ConfiguracaoEmprego =
         habilitarLocalizacao = habilitarLocalizacao,
         localizacaoAutomatica = localizacaoAutomatica,
         exibirLocalizacaoDetalhes = exibirLocalizacaoDetalhes,
+        fotoObrigatoria = fotoObrigatoria,  // ADICIONADO
         exibirDuracaoTurno = exibirDuracaoTurno,
         exibirDuracaoIntervalo = exibirDuracaoIntervalo,
         criadoEm = criadoEm,
@@ -92,6 +78,7 @@ fun ConfiguracaoEmprego.toEntity(): ConfiguracaoEmpregoEntity =
         habilitarLocalizacao = habilitarLocalizacao,
         localizacaoAutomatica = localizacaoAutomatica,
         exibirLocalizacaoDetalhes = exibirLocalizacaoDetalhes,
+        fotoObrigatoria = fotoObrigatoria,  // ADICIONADO
         exibirDuracaoTurno = exibirDuracaoTurno,
         exibirDuracaoIntervalo = exibirDuracaoIntervalo,
         criadoEm = criadoEm,

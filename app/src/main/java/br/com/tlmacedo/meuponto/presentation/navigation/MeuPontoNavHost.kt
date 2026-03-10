@@ -29,13 +29,13 @@ import br.com.tlmacedo.meuponto.presentation.screen.ausencias.AusenciasScreen
 import br.com.tlmacedo.meuponto.presentation.screen.editponto.EditPontoScreen
 import br.com.tlmacedo.meuponto.presentation.screen.history.HistoryScreen
 import br.com.tlmacedo.meuponto.presentation.screen.home.HomeScreen
-import br.com.tlmacedo.meuponto.presentation.screen.settings.SettingsScreen
 import br.com.tlmacedo.meuponto.presentation.screen.settings.empregos.EmpregoSettingsDetailScreen
 import br.com.tlmacedo.meuponto.presentation.screen.settings.empregos.GerenciarEmpregosScreen
 import br.com.tlmacedo.meuponto.presentation.screen.settings.empregos.editar.EditarEmpregoScreen
 import br.com.tlmacedo.meuponto.presentation.screen.settings.feriados.editar.EditarFeriadoScreen
 import br.com.tlmacedo.meuponto.presentation.screen.settings.feriados.lista.FeriadosListScreen
 import br.com.tlmacedo.meuponto.presentation.screen.settings.global.GlobalSettingsScreen
+import br.com.tlmacedo.meuponto.presentation.screen.settings.main.SettingsMainScreen
 import br.com.tlmacedo.meuponto.presentation.screen.settings.sobre.SobreScreen
 import br.com.tlmacedo.meuponto.presentation.screen.settings.versoes.EditarVersaoScreen
 import br.com.tlmacedo.meuponto.presentation.screen.settings.versoes.VersoesJornadaScreen
@@ -49,7 +49,7 @@ import br.com.tlmacedo.meuponto.presentation.screen.settings.versoes.VersoesJorn
  *
  * @author Thiago
  * @since 1.0.0
- * @updated 8.2.0 - Reorganização das configurações com EmpregoSettings
+ * @updated 8.3.0 - Migração para SettingsMainScreen
  */
 @Composable
 fun MeuPontoNavHost(
@@ -172,25 +172,31 @@ fun MeuPontoNavHost(
                 )
             }
 
-            // ===== CONFIGURAÇÕES =====
+            // ===== CONFIGURAÇÕES PRINCIPAIS =====
 
             composable(MeuPontoDestinations.SETTINGS) {
-                SettingsScreen(
+                SettingsMainScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToEmpregos = {
+                    onNavigateToEmpregoEdit = { empregoId ->
+                        navController.navigate(MeuPontoDestinations.editarEmprego(empregoId))
+                    },
+                    onNavigateToGerenciarEmpregos = {
                         navController.navigate(MeuPontoDestinations.GERENCIAR_EMPREGOS)
                     },
-                    onNavigateToEmpregoSettings = { empregoId ->
-                        navController.navigate(MeuPontoDestinations.empregoSettings(empregoId))
-                    },
-                    onNavigateToNovoEmprego = {
-                        navController.navigate(MeuPontoDestinations.NOVO_EMPREGO)
-                    },
-                    onNavigateToFeriados = {
+                    onNavigateToCalendario = {
                         navController.navigate(MeuPontoDestinations.FERIADOS)
                     },
-                    onNavigateToConfiguracoesGlobais = {
-                        navController.navigate(MeuPontoDestinations.CONFIGURACOES_GLOBAIS)
+                    onNavigateToAparencia = {
+                        navController.navigate(MeuPontoDestinations.APARENCIA)
+                    },
+                    onNavigateToNotificacoes = {
+                        navController.navigate(MeuPontoDestinations.NOTIFICACOES)
+                    },
+                    onNavigateToPrivacidade = {
+                        navController.navigate(MeuPontoDestinations.PRIVACIDADE)
+                    },
+                    onNavigateToBackup = {
+                        navController.navigate(MeuPontoDestinations.BACKUP)
                     },
                     onNavigateToSobre = {
                         navController.navigate(MeuPontoDestinations.SOBRE)
@@ -207,7 +213,7 @@ fun MeuPontoNavHost(
                         type = NavType.LongType
                     }
                 )
-            ) { backStackEntry ->
+            ) {
                 EmpregoSettingsDetailScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToVersoes = { id ->
@@ -226,10 +232,7 @@ fun MeuPontoNavHost(
                         type = NavType.LongType
                     }
                 )
-            ) { backStackEntry ->
-                val empregoId = backStackEntry.arguments?.getLong(MeuPontoDestinations.ARG_EMPREGO_ID)
-                    ?: return@composable
-
+            ) {
                 VersoesJornadaScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToEditar = { empId, versaoId ->
@@ -294,11 +297,25 @@ fun MeuPontoNavHost(
                 )
             }
 
-            // ===== APARÊNCIA E BACKUP =====
+            // ===== APARÊNCIA, NOTIFICAÇÕES, PRIVACIDADE E BACKUP =====
 
             composable(MeuPontoDestinations.APARENCIA) {
                 PlaceholderScreen(
                     titulo = "Aparência",
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(MeuPontoDestinations.NOTIFICACOES) {
+                PlaceholderScreen(
+                    titulo = "Notificações",
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(MeuPontoDestinations.PRIVACIDADE) {
+                PlaceholderScreen(
+                    titulo = "Privacidade & Segurança",
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
@@ -371,7 +388,6 @@ fun MeuPontoNavHost(
                     }
                 )
             ) {
-                // TODO: Filtrar ausências por emprego
                 AusenciasScreen(
                     onVoltar = { navController.popBackStack() },
                     onNovaAusencia = {

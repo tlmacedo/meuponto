@@ -446,6 +446,43 @@ private fun ImagePreviewDialog(
 }
 
 /**
+ * Sobrecarga simplificada do ComprovanteImagePicker para uso em contextos
+ * onde não há necessidade de câmera ou caminho de imagem persistido.
+ *
+ * Ideal para formulários simples onde apenas a seleção de galeria é necessária.
+ *
+ * @param fotoSelecionadaUri URI da foto atualmente selecionada (temporário)
+ * @param isObrigatorio Indica se a foto é obrigatória (exibe indicador visual)
+ * @param onFotoSelecionada Callback quando uma foto é selecionada
+ * @param onRemoverFoto Callback quando a foto é removida
+ * @param modifier Modificador do componente
+ * @param enabled Se o componente está habilitado para interação
+ *
+ * @author Thiago
+ * @since 9.0.0
+ */
+@Composable
+fun ComprovanteImagePicker(
+    fotoSelecionadaUri: Uri?,
+    isObrigatorio: Boolean = false,
+    onFotoSelecionada: (Uri) -> Unit,
+    onRemoverFoto: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    ComprovanteImagePicker(
+        currentImagePath = null,
+        currentImageUri = fotoSelecionadaUri,
+        imageBaseDir = null,
+        onImageSelected = onFotoSelecionada,
+        onImageRemoved = onRemoverFoto,
+        onCameraUriCreated = { null }, // Câmera desabilitada neste modo simplificado
+        modifier = modifier,
+        enabled = enabled
+    )
+}
+
+/**
  * Verifica se a permissão de câmera foi concedida.
  */
 private fun hasCameraPermission(context: Context): Boolean {

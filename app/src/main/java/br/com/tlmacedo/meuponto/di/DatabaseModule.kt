@@ -57,7 +57,8 @@ object DatabaseModule {
                 MIGRATION_17_18,
                 MIGRATION_18_19,
                 MIGRATION_19_20,
-                MIGRATION_20_21  // NOVA MIGRATION - foto comprovante
+                MIGRATION_20_21,
+                MIGRATION_21_22
             )
             .addCallback(createDatabaseCallback())
             .build()

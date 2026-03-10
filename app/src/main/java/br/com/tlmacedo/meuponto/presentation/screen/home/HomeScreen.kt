@@ -57,8 +57,8 @@ import br.com.tlmacedo.meuponto.presentation.components.RegistrarPontoButton
 import br.com.tlmacedo.meuponto.presentation.components.RegistrarPontoManualButton
 import br.com.tlmacedo.meuponto.presentation.components.ResumoCard
 import br.com.tlmacedo.meuponto.presentation.components.TimePickerDialog
+import br.com.tlmacedo.meuponto.presentation.components.foto.ComprovanteImagePicker
 import br.com.tlmacedo.meuponto.presentation.screen.home.components.FechamentoCicloDialog
-import br.com.tlmacedo.meuponto.util.toDatePickerMillis
 import br.com.tlmacedo.meuponto.util.toLocalDateFromDatePicker
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -331,6 +331,18 @@ internal fun HomeContent(
                 }
             }
 
+//            // ═══════════════════════════════════════════════════════════════
+//            // Seletor de foto de comprovante (quando habilitado)
+//            // ═══════════════════════════════════════════════════════════════
+//            if (uiState.fotoHabilitada && (uiState.podeRegistrarPontoAutomatico || uiState.podeRegistrarPontoManual)) {
+//                ComprovanteImagePicker(
+//                    fotoSelecionadaUri = uiState.fotoComprovanteUri,
+//                    isObrigatorio = uiState.fotoObrigatoria,
+//                    onFotoSelecionada = { uri -> onAction(HomeAction.SelecionarFotoComprovante(uri)) },
+//                    onRemoverFoto = { onAction(HomeAction.RemoverFotoComprovante) }
+//                )
+//            }
+//
             if (uiState.podeRegistrarPontoAutomatico) {
                 RegistrarPontoButton(
                     proximoTipo = uiState.proximoTipo,
@@ -345,6 +357,7 @@ internal fun HomeContent(
                     onRegistrarManual = { onAction(HomeAction.AbrirTimePickerDialog) }
                 )
             }
+
 
             if (uiState.isFeriado) {
                 FeriadoBanner(feriados = uiState.feriadosDoDia)
