@@ -2,8 +2,10 @@
 package br.com.tlmacedo.meuponto.presentation.screen.home
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
@@ -46,6 +48,7 @@ import br.com.tlmacedo.meuponto.domain.model.TipoPonto
 import br.com.tlmacedo.meuponto.presentation.components.AusenciaBanner
 import br.com.tlmacedo.meuponto.presentation.components.CicloBanner
 import br.com.tlmacedo.meuponto.presentation.components.DateNavigator
+import br.com.tlmacedo.meuponto.presentation.components.EdicaoInlineForm
 import br.com.tlmacedo.meuponto.presentation.components.EmpregoSelectorBottomSheet
 import br.com.tlmacedo.meuponto.presentation.components.EmpregoSelectorChip
 import br.com.tlmacedo.meuponto.presentation.components.FechamentoCicloBanner
@@ -70,6 +73,7 @@ import java.time.format.DateTimeFormatter
  * @author Thiago
  * @since 2.0.0
  * @updated 6.2.0 - Adicionado suporte a ciclos de banco de horas
+ * @updated 7.0.0 - Adicionado suporte a edição inline de pontos
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,27 +96,35 @@ fun HomeScreen(
                 is HomeUiEvent.MostrarMensagem -> {
                     snackbarHostState.showSnackbar(event.mensagem)
                 }
+
                 is HomeUiEvent.MostrarErro -> {
                     snackbarHostState.showSnackbar(event.mensagem)
                 }
+
                 is HomeUiEvent.NavegarParaHistorico -> {
                     onNavigateToHistory()
                 }
+
                 is HomeUiEvent.NavegarParaConfiguracoes -> {
                     onNavigateToSettings()
                 }
+
                 is HomeUiEvent.NavegarParaEditarPonto -> {
                     onNavigateToEditPonto(event.pontoId)
                 }
+
                 is HomeUiEvent.EmpregoTrocado -> {
                     snackbarHostState.showSnackbar("Emprego alterado: ${event.nomeEmprego}")
                 }
+
                 is HomeUiEvent.NavegarParaNovoEmprego -> {
                     onNavigateToNovoEmprego()
                 }
+
                 is HomeUiEvent.NavegarParaEditarEmprego -> {
                     onNavigateToEditarEmprego(event.empregoId)
                 }
+
                 is HomeUiEvent.NavegarParaHistoricoCiclos -> {
                     onNavigateToHistoricoCiclos()
                 }
@@ -131,6 +143,7 @@ fun HomeScreen(
         }
     }
 
+    // TimePicker para registro de ponto
     if (uiState.showTimePickerDialog) {
         TimePickerDialog(
             titulo = "Registrar ${uiState.proximoTipo.descricao}",
@@ -140,6 +153,21 @@ fun HomeScreen(
             },
             onDismiss = {
                 viewModel.onAction(HomeAction.FecharTimePickerDialog)
+            }
+        )
+    }
+
+    // TimePicker para edição inline
+    if (uiState.edicaoInline?.showTimePicker == true) {
+        TimePickerDialog(
+            titulo = "Alterar horário",
+            horaInicial = uiState.edicaoInline?.hora ?: uiState.horaAtual,
+            onConfirm = { hora ->
+                viewModel.onAction(HomeAction.AtualizarHoraInline(hora))
+                viewModel.onAction(HomeAction.FecharTimePickerInline)
+            },
+            onDismiss = {
+                viewModel.onAction(HomeAction.FecharTimePickerInline)
             }
         )
     }
@@ -220,6 +248,7 @@ fun HomeScreen(
             onCancelar = { viewModel.onAction(HomeAction.FecharDialogFechamentoCiclo) }
         )
     }
+
 
     Scaffold(
         topBar = {
@@ -316,9 +345,7 @@ internal fun HomeContent(
                 mostrarContador = uiState.deveExibirContador
             )
 
-            // ═══════════════════════════════════════════════════════════════
-            // ADICIONAR AQUI: Banner de fechamento de ciclo anterior
-            // ═══════════════════════════════════════════════════════════════
+            // Banner de fechamento de ciclo anterior
             if (uiState.deveExibirBannerFechamentoCiclo) {
                 uiState.fechamentoCicloAnterior?.let { fechamento ->
                     FechamentoCicloBanner(fechamento = fechamento)
@@ -331,18 +358,32 @@ internal fun HomeContent(
                 }
             }
 
-//            // ═══════════════════════════════════════════════════════════════
-//            // Seletor de foto de comprovante (quando habilitado)
-//            // ═══════════════════════════════════════════════════════════════
-//            if (uiState.fotoHabilitada && (uiState.podeRegistrarPontoAutomatico || uiState.podeRegistrarPontoManual)) {
-//                ComprovanteImagePicker(
-//                    fotoSelecionadaUri = uiState.fotoComprovanteUri,
-//                    isObrigatorio = uiState.fotoObrigatoria,
-//                    onFotoSelecionada = { uri -> onAction(HomeAction.SelecionarFotoComprovante(uri)) },
-//                    onRemoverFoto = { onAction(HomeAction.RemoverFotoComprovante) }
-//                )
-//            }
-//
+            // Seletor de foto de comprovante
+            if (uiState.fotoHabilitada) {
+                ComprovanteImagePicker(
+                    showSourceDialog = uiState.showFotoSourceDialog,
+                    onDismissSourceDialog = { onAction(HomeAction.FecharFotoSourceDialog) },
+                    cameraUri = uiState.cameraUri,
+                    onCameraResult = { success ->
+                        if (success) {
+                            onAction(HomeAction.ConfirmarFotoCamera)
+                        } else {
+                            onAction(HomeAction.FecharFotoSourceDialog)
+                        }
+                    },
+                    onGalleryResult = { uri ->
+                        if (uri != null) {
+                            onAction(HomeAction.SelecionarFotoComprovante(uri))
+                        } else {
+                            onAction(HomeAction.FecharFotoSourceDialog)
+                        }
+                    },
+                    onPermissionDenied = { mensagem ->
+                        onAction(HomeAction.FecharFotoSourceDialog)
+                    }
+                )
+            }
+
             if (uiState.podeRegistrarPontoAutomatico) {
                 RegistrarPontoButton(
                     proximoTipo = uiState.proximoTipo,
@@ -398,22 +439,77 @@ internal fun HomeContent(
                     items = uiState.resumoDia.intervalos,
                     key = { "intervalo_${it.entrada.id}" }
                 ) { intervalo ->
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn() + slideInVertically(),
-                        exit = fadeOut() + slideOutVertically()
-                    ) {
-                        IntervaloCard(
-                            intervalo = intervalo,
-                            mostrarContadorTempoReal = uiState.isHoje,
-                            mostrarNsr = uiState.nsrHabilitado,
-                            onEditarEntrada = { pontoId ->
-                                onAction(HomeAction.EditarPonto(pontoId))
-                            },
-                            onEditarSaida = { pontoId ->
-                                onAction(HomeAction.EditarPonto(pontoId))
+                    Column {
+                        // Card do intervalo
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = fadeIn() + slideInVertically(),
+                            exit = fadeOut() + slideOutVertically()
+                        ) {
+                            IntervaloCard(
+                                intervalo = intervalo,
+                                mostrarContadorTempoReal = uiState.isHoje && !uiState.temEdicaoInlineAtiva,
+                                mostrarNsr = uiState.nsrHabilitado,
+                                onEditarEntrada = { pontoId ->
+                                    val ponto = uiState.pontosHoje.find { it.id == pontoId }
+                                    ponto?.let { onAction(HomeAction.IniciarEdicaoInline(it)) }
+                                },
+                                onEditarSaida = { pontoId ->
+                                    val ponto = uiState.pontosHoje.find { it.id == pontoId }
+                                    ponto?.let { onAction(HomeAction.IniciarEdicaoInline(it)) }
+                                }
+                            )
+                        }
+
+                        // Formulário de edição inline da ENTRADA
+                        val edicaoEntrada = uiState.getEdicaoParaPonto(intervalo.entrada.id)
+                        AnimatedVisibility(
+                            visible = edicaoEntrada != null,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            edicaoEntrada?.let { state ->
+                                EdicaoInlineForm(
+                                    ponto = intervalo.entrada,
+                                    state = state,
+                                    descricaoTipoPonto = "Entrada",
+                                    habilitarNsr = uiState.nsrHabilitado,
+                                    tipoNsr = uiState.tipoNsr,
+                                    onHoraClick = { onAction(HomeAction.AbrirTimePickerInline) },
+                                    onNsrChange = { onAction(HomeAction.AtualizarNsrInline(it)) },
+                                    onMotivoChange = { onAction(HomeAction.SelecionarMotivoInline(it)) },
+                                    onMotivoDetalhesChange = { onAction(HomeAction.AtualizarMotivoDetalhesInline(it)) },
+                                    onSalvar = { onAction(HomeAction.SalvarEdicaoInline) },
+                                    onCancelar = { onAction(HomeAction.CancelarEdicaoInline) }
+                                )
                             }
-                        )
+                        }
+
+                        // Formulário de edição inline da SAÍDA (se existir)
+                        intervalo.saida?.let { saida ->
+                            val edicaoSaida = uiState.getEdicaoParaPonto(saida.id)
+                            AnimatedVisibility(
+                                visible = edicaoSaida != null,
+                                enter = expandVertically() + fadeIn(),
+                                exit = shrinkVertically() + fadeOut()
+                            ) {
+                                edicaoSaida?.let { state ->
+                                    EdicaoInlineForm(
+                                        ponto = saida,
+                                        state = state,
+                                        descricaoTipoPonto = "Saída",
+                                        habilitarNsr = uiState.nsrHabilitado,
+                                        tipoNsr = uiState.tipoNsr,
+                                        onHoraClick = { onAction(HomeAction.AbrirTimePickerInline) },
+                                        onNsrChange = { onAction(HomeAction.AtualizarNsrInline(it)) },
+                                        onMotivoChange = { onAction(HomeAction.SelecionarMotivoInline(it)) },
+                                        onMotivoDetalhesChange = { onAction(HomeAction.AtualizarMotivoDetalhesInline(it)) },
+                                        onSalvar = { onAction(HomeAction.SalvarEdicaoInline) },
+                                        onCancelar = { onAction(HomeAction.CancelarEdicaoInline) }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             } else if (uiState.temEmpregoAtivo && !uiState.isFuturo) {

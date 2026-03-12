@@ -58,6 +58,7 @@ sealed interface BackupEvent {
  * @since 9.0.0
  */
 @HiltViewModel
+@Suppress("DEPRECATION") // observarTodos é usado intencionalmente para backup completo
 class BackupViewModel @Inject constructor(
     private val empregoRepository: EmpregoRepository,
     private val pontoRepository: PontoRepository,

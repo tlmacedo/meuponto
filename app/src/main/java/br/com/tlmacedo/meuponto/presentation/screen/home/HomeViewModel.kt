@@ -6,6 +6,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.tlmacedo.meuponto.domain.model.Emprego
+import br.com.tlmacedo.meuponto.domain.model.MotivoEdicao
 import br.com.tlmacedo.meuponto.domain.model.Ponto
 import br.com.tlmacedo.meuponto.domain.model.TipoDiaEspecial
 import br.com.tlmacedo.meuponto.domain.model.ausencia.Ausencia
@@ -59,7 +60,9 @@ import kotlin.math.abs
  * @since 2.0.0
  * @updated 6.2.0 - Adicionado suporte a ciclos de banco de horas
  * @updated 6.3.0 - Adicionado suporte a reversão de fechamentos incorretos
+ * @updated 7.0.0 - Adicionado suporte a edição inline de pontos
  * @updated 9.0.0 - Adicionado suporte a foto de comprovante
+ * @updated 10.0.0 - Corrigido fluxo de registro com foto obrigatória
  */
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -113,8 +116,22 @@ class HomeViewModel @Inject constructor(
             is HomeAction.AtualizarNsr -> atualizarNsr(action.nsr)
             is HomeAction.ConfirmarRegistroComNsr -> confirmarRegistroComNsr()
             is HomeAction.CancelarNsrDialog -> cancelarNsrDialog()
+            is HomeAction.AbrirFotoSourceDialog -> abrirFotoSourceDialog()
+            is HomeAction.FecharFotoSourceDialog -> fecharFotoSourceDialog()
+            is HomeAction.ConfirmarFotoCamera -> confirmarFotoCamera()
             is HomeAction.SelecionarFotoComprovante -> selecionarFotoComprovante(action.uri)
             is HomeAction.RemoverFotoComprovante -> removerFotoComprovante()
+            // Edição inline
+            is HomeAction.IniciarEdicaoInline -> iniciarEdicaoInline(action.ponto)
+            is HomeAction.CancelarEdicaoInline -> cancelarEdicaoInline()
+            is HomeAction.AtualizarHoraInline -> atualizarHoraInline(action.hora)
+            is HomeAction.AtualizarNsrInline -> atualizarNsrInline(action.nsr)
+            is HomeAction.SelecionarMotivoInline -> selecionarMotivoInline(action.motivo)
+            is HomeAction.AtualizarMotivoDetalhesInline -> atualizarMotivoDetalhesInline(action.detalhes)
+            is HomeAction.AbrirTimePickerInline -> abrirTimePickerInline()
+            is HomeAction.FecharTimePickerInline -> fecharTimePickerInline()
+            is HomeAction.SalvarEdicaoInline -> salvarEdicaoInline()
+            // Editar ponto (navegação para tela completa)
             is HomeAction.EditarPonto -> {
                 viewModelScope.launch {
                     _uiEvent.emit(HomeUiEvent.NavegarParaEditarPonto(action.pontoId))
@@ -146,6 +163,169 @@ class HomeViewModel @Inject constructor(
             is HomeAction.FecharDialogFechamentoCiclo -> fecharDialogFechamentoCiclo()
             is HomeAction.ConfirmarFechamentoCiclo -> confirmarFechamentoCiclo()
             is HomeAction.NavegarParaHistoricoCiclos -> navegarParaHistoricoCiclos()
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // EDIÇÃO INLINE DE PONTOS
+    // ══════════════════════════════════════════════════════════════════════
+
+    private fun iniciarEdicaoInline(ponto: Ponto) {
+        // Cancelar qualquer edição anterior
+        if (_uiState.value.temEdicaoInlineAtiva) {
+            cancelarEdicaoInline()
+        }
+
+        _uiState.update {
+            it.copy(
+                pontoEmEdicaoId = ponto.id,
+                edicaoInline = EdicaoInlineState(
+                    pontoId = ponto.id,
+                    hora = ponto.hora,
+                    nsr = ponto.nsr ?: "",
+                    motivoSelecionado = MotivoEdicao.NENHUM,
+                    motivoDetalhes = ""
+                )
+            )
+        }
+    }
+
+    private fun cancelarEdicaoInline() {
+        _uiState.update {
+            it.copy(
+                pontoEmEdicaoId = null,
+                edicaoInline = null
+            )
+        }
+    }
+
+    private fun atualizarHoraInline(hora: LocalTime) {
+        _uiState.update { state ->
+            state.copy(
+                edicaoInline = state.edicaoInline?.copy(hora = hora)
+            )
+        }
+    }
+
+    private fun atualizarNsrInline(nsr: String) {
+        _uiState.update { state ->
+            state.copy(
+                edicaoInline = state.edicaoInline?.copy(nsr = nsr)
+            )
+        }
+    }
+
+    private fun selecionarMotivoInline(motivo: MotivoEdicao) {
+        _uiState.update { state ->
+            state.copy(
+                edicaoInline = state.edicaoInline?.copy(
+                    motivoSelecionado = motivo,
+                    // Limpar detalhes se novo motivo não requer
+                    motivoDetalhes = if (!motivo.requerDetalhes) "" else state.edicaoInline.motivoDetalhes
+                )
+            )
+        }
+    }
+
+    private fun atualizarMotivoDetalhesInline(detalhes: String) {
+        _uiState.update { state ->
+            state.copy(
+                edicaoInline = state.edicaoInline?.copy(motivoDetalhes = detalhes)
+            )
+        }
+    }
+
+    private fun abrirTimePickerInline() {
+        _uiState.update { state ->
+            state.copy(
+                edicaoInline = state.edicaoInline?.copy(showTimePicker = true)
+            )
+        }
+    }
+
+    private fun fecharTimePickerInline() {
+        _uiState.update { state ->
+            state.copy(
+                edicaoInline = state.edicaoInline?.copy(showTimePicker = false)
+            )
+        }
+    }
+
+    // No HomeViewModel.kt, substituir o método salvarEdicaoInline:
+
+    private fun salvarEdicaoInline() {
+        val state = _uiState.value
+        val edicao = state.edicaoInline ?: return
+        val pontoId = state.pontoEmEdicaoId ?: return
+
+        // Validar motivo
+        if (!edicao.motivoValido) {
+            _uiState.update { s ->
+                s.copy(
+                    edicaoInline = s.edicaoInline?.copy(erro = "Selecione um motivo válido")
+                )
+            }
+            return
+        }
+
+        // Buscar ponto original
+        val pontoOriginal = state.pontosHoje.find { it.id == pontoId }
+        if (pontoOriginal == null) {
+            viewModelScope.launch {
+                _uiEvent.emit(HomeUiEvent.MostrarErro("Ponto não encontrado"))
+            }
+            cancelarEdicaoInline()
+            return
+        }
+
+        viewModelScope.launch {
+            // Marcar como salvando
+            _uiState.update { s ->
+                s.copy(
+                    edicaoInline = s.edicaoInline?.copy(isSaving = true, erro = null)
+                )
+            }
+
+            try {
+                // Montar ponto atualizado
+                // NOTA: O modelo Ponto não tem motivoAlteracao/dataHoraAlteracao
+                // Esses campos podem ser adicionados ao modelo ou usar observacao
+                val pontoAtualizado = pontoOriginal.copy(
+                    dataHora = LocalDateTime.of(pontoOriginal.data, edicao.hora),
+                    horaConsiderada = edicao.hora, // Atualizar também a hora considerada
+                    nsr = edicao.nsr.ifBlank { null },
+                    isEditadoManualmente = true,
+                    observacao = buildString {
+                        pontoOriginal.observacao?.let { append(it).append(" | ") }
+                        append("[Editado: ${edicao.motivoCompleto}]")
+                    }.take(500), // Limitar tamanho
+                    atualizadoEm = LocalDateTime.now()
+                )
+
+                // Salvar via repository
+                pontoRepository.atualizar(pontoAtualizado)
+
+                // Fechar edição
+                cancelarEdicaoInline()
+
+                // Recarregar dados para refletir alterações
+                carregarPontosDoDia()
+                carregarBancoHoras()
+
+                // Notificar sucesso
+                _uiEvent.emit(HomeUiEvent.MostrarMensagem("Ponto atualizado com sucesso"))
+
+            } catch (e: Exception) {
+                android.util.Log.e("HomeViewModel", "Erro ao salvar edição inline: ${e.message}")
+                _uiState.update { s ->
+                    s.copy(
+                        edicaoInline = s.edicaoInline?.copy(
+                            isSaving = false,
+                            erro = e.message ?: "Erro ao salvar alterações"
+                        )
+                    )
+                }
+            }
         }
     }
 
@@ -484,6 +664,11 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun selecionarData(data: LocalDate) {
+        // Cancelar edição inline ao trocar de data
+        if (_uiState.value.temEdicaoInlineAtiva) {
+            cancelarEdicaoInline()
+        }
+
         _uiState.update { it.copy(dataSelecionada = data) }
         carregarPontosDoDia()
         carregarBancoHoras()
@@ -504,6 +689,11 @@ class HomeViewModel @Inject constructor(
 
     private fun selecionarEmprego(emprego: Emprego) {
         viewModelScope.launch {
+            // Cancelar edição inline ao trocar de emprego
+            if (_uiState.value.temEdicaoInlineAtiva) {
+                cancelarEdicaoInline()
+            }
+
             when (val resultado = trocarEmpregoAtivoUseCase(emprego)) {
                 is TrocarEmpregoAtivoUseCase.Resultado.Sucesso -> {
                     fecharSeletorEmprego()
@@ -547,6 +737,34 @@ class HomeViewModel @Inject constructor(
 
         fecharTimePicker()
 
+        android.util.Log.d("HomeViewModel", "iniciarRegistroPonto: hora=$hora, fotoObrigatoria=${_uiState.value.fotoObrigatoria}, fotoUri=${_uiState.value.fotoComprovanteUri}")
+
+        // Se foto é obrigatória e não tem foto selecionada, abrir diálogo de foto primeiro
+        if (_uiState.value.fotoObrigatoria && _uiState.value.fotoComprovanteUri == null) {
+            val uri = criarCameraUri()
+            android.util.Log.d("HomeViewModel", "Abrindo diálogo de foto. cameraUri=$uri")
+            _uiState.update {
+                it.copy(
+                    horaPendenteParaRegistro = hora,
+                    showFotoSourceDialog = true,
+                    cameraUri = uri
+                )
+            }
+            return
+        }
+
+        // Continuar com fluxo normal (sem foto obrigatória ou já tem foto)
+        continuarFluxoRegistro(hora)
+    }
+
+    /**
+     * Continua o fluxo de registro após verificar foto.
+     * Se NSR habilitado, abre diálogo de NSR.
+     * Caso contrário, registra direto.
+     */
+    private fun continuarFluxoRegistro(hora: LocalTime) {
+        android.util.Log.d("HomeViewModel", "continuarFluxoRegistro: hora=$hora, nsrHabilitado=${_uiState.value.nsrHabilitado}")
+
         if (_uiState.value.nsrHabilitado) {
             _uiState.update {
                 it.copy(
@@ -565,8 +783,25 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun confirmarRegistroComNsr() {
-        val hora = _uiState.value.horaPendenteParaRegistro ?: return
+        val hora = _uiState.value.horaPendenteParaRegistro
         val nsr = _uiState.value.nsrPendente
+
+        android.util.Log.d("HomeViewModel", "confirmarRegistroComNsr: hora=$hora, nsr=$nsr")
+
+        if (hora == null) {
+            android.util.Log.e("HomeViewModel", "confirmarRegistroComNsr: hora é null!")
+            viewModelScope.launch {
+                _uiEvent.emit(HomeUiEvent.MostrarErro("Erro interno. Tente novamente."))
+            }
+            _uiState.update {
+                it.copy(
+                    showNsrDialog = false,
+                    nsrPendente = "",
+                    horaPendenteParaRegistro = null
+                )
+            }
+            return
+        }
 
         if (nsr.isBlank()) {
             viewModelScope.launch {
@@ -591,7 +826,8 @@ class HomeViewModel @Inject constructor(
             it.copy(
                 showNsrDialog = false,
                 nsrPendente = "",
-                horaPendenteParaRegistro = null
+                horaPendenteParaRegistro = null,
+                fotoComprovanteUri = null // Limpar foto também ao cancelar
             )
         }
     }
@@ -613,6 +849,8 @@ class HomeViewModel @Inject constructor(
             return
         }
 
+        android.util.Log.d("HomeViewModel", "registrarPonto: hora=$hora, nsr=$nsr, fotoUri=${_uiState.value.fotoComprovanteUri}")
+
         viewModelScope.launch {
             val data = _uiState.value.dataSelecionada
             val dataHora = LocalDateTime.of(data, hora)
@@ -628,7 +866,7 @@ class HomeViewModel @Inject constructor(
                 is RegistrarPontoUseCase.Resultado.Sucesso -> {
                     // Salvar foto se existir
                     fotoUri?.let { uri ->
-                        salvarFotoComprovante(uri, resultado.pontoId, empregoId, data)
+                        salvarFotoComprovante(uri, resultado.pontoId, empregoId, dataHora)
                     }
 
                     // Limpar foto pendente
@@ -675,17 +913,8 @@ class HomeViewModel @Inject constructor(
     // FOTO DE COMPROVANTE
     // ══════════════════════════════════════════════════════════════════════
 
-    private fun selecionarFotoComprovante(uri: Uri) {
-        _uiState.update { it.copy(fotoComprovanteUri = uri) }
-    }
-
-    private fun removerFotoComprovante() {
-        _uiState.update { it.copy(fotoComprovanteUri = null) }
-    }
-
     /**
      * Cria URI temporário para captura de foto com a câmera.
-     * Usado pelo ComprovanteImagePicker.
      */
     fun criarCameraUri(): Uri? {
         return try {
@@ -706,7 +935,6 @@ class HomeViewModel @Inject constructor(
 
     /**
      * Obtém o diretório base para imagens de comprovantes.
-     * Usado pelo ComprovanteImagePicker para exibir imagens existentes.
      */
     fun getComprovantesDirectory(): File? {
         return try {
@@ -720,14 +948,14 @@ class HomeViewModel @Inject constructor(
         uri: Uri,
         pontoId: Long,
         empregoId: Long,
-        data: LocalDate
+        dataHora: LocalDateTime
     ) {
         try {
             val relativePath = comprovanteImageStorage.saveFromUri(
                 uri = uri,
                 empregoId = empregoId,
                 pontoId = pontoId,
-                data = data
+                dataHora = dataHora
             )
 
             if (relativePath != null) {
@@ -741,11 +969,116 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    private fun abrirFotoSourceDialog() {
+        // Criar o cameraUri ANTES de abrir o diálogo
+        val uri = criarCameraUri()
+        _uiState.update {
+            it.copy(
+                showFotoSourceDialog = true,
+                cameraUri = uri
+            )
+        }
+    }
+
+    private fun fecharFotoSourceDialog() {
+        _uiState.update {
+            it.copy(
+                showFotoSourceDialog = false,
+                cameraUri = null,
+                // NÃO limpar horaPendenteParaRegistro aqui - apenas se cancelar completamente
+            )
+        }
+    }
+
+    private fun confirmarFotoCamera() {
+        val cameraUri = _uiState.value.cameraUri
+        val horaPendente = _uiState.value.horaPendenteParaRegistro
+
+        android.util.Log.d("HomeViewModel", "confirmarFotoCamera: cameraUri=$cameraUri, horaPendente=$horaPendente")
+
+        if (cameraUri == null) {
+            android.util.Log.e("HomeViewModel", "confirmarFotoCamera: cameraUri é null!")
+            _uiState.update {
+                it.copy(
+                    showFotoSourceDialog = false,
+                    horaPendenteParaRegistro = null
+                )
+            }
+            viewModelScope.launch {
+                _uiEvent.emit(HomeUiEvent.MostrarErro("Erro ao capturar foto. Tente novamente."))
+            }
+            return
+        }
+
+        // Atualizar estado com a foto capturada
+        _uiState.update {
+            it.copy(
+                fotoComprovanteUri = cameraUri,
+                cameraUri = null,
+                showFotoSourceDialog = false
+            )
+        }
+
+        // Continuar o fluxo de registro
+        continuarRegistroAposFoto()
+    }
+
+    private fun selecionarFotoComprovante(uri: Uri) {
+        android.util.Log.d("HomeViewModel", "selecionarFotoComprovante: uri=$uri, horaPendente=${_uiState.value.horaPendenteParaRegistro}")
+
+        _uiState.update {
+            it.copy(
+                fotoComprovanteUri = uri,
+                showFotoSourceDialog = false
+            )
+        }
+
+        // Continuar o fluxo de registro
+        continuarRegistroAposFoto()
+    }
+
+    private fun removerFotoComprovante() {
+        _uiState.update { it.copy(fotoComprovanteUri = null) }
+    }
+
+    /**
+     * Continua o fluxo de registro após seleção de foto.
+     */
+    private fun continuarRegistroAposFoto() {
+        val hora = _uiState.value.horaPendenteParaRegistro
+
+        android.util.Log.d("HomeViewModel", "continuarRegistroAposFoto: hora=$hora, nsrHabilitado=${_uiState.value.nsrHabilitado}")
+
+        if (hora == null) {
+            android.util.Log.e("HomeViewModel", "continuarRegistroAposFoto: horaPendenteParaRegistro é null!")
+            return
+        }
+
+        if (_uiState.value.nsrHabilitado) {
+            _uiState.update {
+                it.copy(
+                    showNsrDialog = true,
+                    nsrPendente = ""
+                    // Manter horaPendenteParaRegistro!
+                )
+            }
+        } else {
+            // Limpar hora pendente antes de registrar
+            _uiState.update { it.copy(horaPendenteParaRegistro = null) }
+            registrarPonto(hora, null)
+        }
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     // EXCLUSÃO DE PONTO
     // ══════════════════════════════════════════════════════════════════════
 
     private fun solicitarExclusao(ponto: Ponto) {
+        // Cancelar edição inline se estiver ativa
+        if (_uiState.value.temEdicaoInlineAtiva) {
+            cancelarEdicaoInline()
+        }
+
         _uiState.update {
             it.copy(
                 showDeleteConfirmDialog = true,

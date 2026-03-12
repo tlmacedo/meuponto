@@ -4,10 +4,15 @@ package br.com.tlmacedo.meuponto.data.local.database.converter
 import androidx.room.TypeConverter
 import br.com.tlmacedo.meuponto.domain.model.AcaoAuditoria
 import br.com.tlmacedo.meuponto.domain.model.DiaSemana
+import br.com.tlmacedo.meuponto.domain.model.FotoFormato
+import br.com.tlmacedo.meuponto.domain.model.FotoOrigem
 import br.com.tlmacedo.meuponto.domain.model.TipoFechamento
+import br.com.tlmacedo.meuponto.domain.model.TipoJornadaDia
 import br.com.tlmacedo.meuponto.domain.model.TipoNsr
 import br.com.tlmacedo.meuponto.domain.model.ausencia.TipoAusencia
 import br.com.tlmacedo.meuponto.domain.model.ausencia.TipoFolga
+import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -19,12 +24,17 @@ import java.time.format.DateTimeFormatter
  * @author Thiago
  * @since 1.0.0
  * @updated 5.5.0 - Removido conversor para SubTipoFolga
+ * @updated 10.0.0 - Adicionados conversores para tipos de foto de comprovante
  */
 class Converters {
 
     private val dateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
     private val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
     private val timeFormatter = DateTimeFormatter.ISO_LOCAL_TIME
+
+    // ════════════════════════════════════════════════════════════════════════
+    // CONVERSORES DE DATA/HORA
+    // ════════════════════════════════════════════════════════════════════════
 
     // LocalDateTime Converters
     @TypeConverter
@@ -46,6 +56,24 @@ class Converters {
 
     @TypeConverter
     fun toLocalTime(value: String?): LocalTime? = value?.let { LocalTime.parse(it, timeFormatter) }
+
+    // Instant Converters (para timestamps UTC)
+    @TypeConverter
+    fun fromInstant(instant: Instant?): String? = instant?.toString()
+
+    @TypeConverter
+    fun toInstant(value: String?): Instant? = value?.let { Instant.parse(it) }
+
+    // DayOfWeek Converters (para java.time.DayOfWeek)
+    @TypeConverter
+    fun fromDayOfWeek(dayOfWeek: DayOfWeek?): String? = dayOfWeek?.name
+
+    @TypeConverter
+    fun toDayOfWeek(value: String?): DayOfWeek? = value?.let { DayOfWeek.valueOf(it) }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // CONVERSORES DE ENUMS EXISTENTES
+    // ════════════════════════════════════════════════════════════════════════
 
     // TipoNsr Enum Converters
     @TypeConverter
@@ -90,4 +118,34 @@ class Converters {
         try { TipoFolga.valueOf(it) } catch (e: Exception) { null }
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    // CONVERSORES DE ENUMS DE FOTO DE COMPROVANTE
+    // ════════════════════════════════════════════════════════════════════════
+
+    // FotoOrigem Enum Converters
+    @TypeConverter
+    fun fromFotoOrigem(origem: FotoOrigem?): String? = origem?.name
+
+    @TypeConverter
+    fun toFotoOrigem(value: String?): FotoOrigem? = value?.let {
+        try { FotoOrigem.valueOf(it) } catch (e: Exception) { FotoOrigem.CAMERA }
+    }
+
+    // FotoFormato Enum Converters
+    @TypeConverter
+    fun fromFotoFormato(formato: FotoFormato?): String? = formato?.name
+
+    @TypeConverter
+    fun toFotoFormato(value: String?): FotoFormato? = value?.let {
+        try { FotoFormato.valueOf(it) } catch (e: Exception) { FotoFormato.JPEG }
+    }
+
+    // TipoJornadaDia Enum Converters
+    @TypeConverter
+    fun fromTipoJornadaDia(tipo: TipoJornadaDia?): String? = tipo?.name
+
+    @TypeConverter
+    fun toTipoJornadaDia(value: String?): TipoJornadaDia? = value?.let {
+        try { TipoJornadaDia.valueOf(it) } catch (e: Exception) { TipoJornadaDia.NORMAL }
+    }
 }

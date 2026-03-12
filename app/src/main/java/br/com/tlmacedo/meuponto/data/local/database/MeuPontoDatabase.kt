@@ -14,6 +14,7 @@ import br.com.tlmacedo.meuponto.data.local.database.dao.ConfiguracaoPontesAnoDao
 import br.com.tlmacedo.meuponto.data.local.database.dao.EmpregoDao
 import br.com.tlmacedo.meuponto.data.local.database.dao.FechamentoPeriodoDao
 import br.com.tlmacedo.meuponto.data.local.database.dao.FeriadoDao
+import br.com.tlmacedo.meuponto.data.local.database.dao.FotoComprovanteDao
 import br.com.tlmacedo.meuponto.data.local.database.dao.HorarioDiaSemanaDao
 import br.com.tlmacedo.meuponto.data.local.database.dao.MarcadorDao
 import br.com.tlmacedo.meuponto.data.local.database.dao.PontoDao
@@ -26,6 +27,7 @@ import br.com.tlmacedo.meuponto.data.local.database.entity.ConfiguracaoPontesAno
 import br.com.tlmacedo.meuponto.data.local.database.entity.EmpregoEntity
 import br.com.tlmacedo.meuponto.data.local.database.entity.FechamentoPeriodoEntity
 import br.com.tlmacedo.meuponto.data.local.database.entity.FeriadoEntity
+import br.com.tlmacedo.meuponto.data.local.database.entity.FotoComprovanteEntity
 import br.com.tlmacedo.meuponto.data.local.database.entity.HorarioDiaSemanaEntity
 import br.com.tlmacedo.meuponto.data.local.database.entity.MarcadorEntity
 import br.com.tlmacedo.meuponto.data.local.database.entity.PontoEntity
@@ -36,6 +38,7 @@ import br.com.tlmacedo.meuponto.data.local.database.entity.VersaoJornadaEntity
  *
  * @since 1.0.0
  * @updated 8.0.0 - Versão 20: Migração de campos de ConfiguracaoEmprego para VersaoJornada
+ * @updated 10.0.0 - Versão 23: Sistema completo de foto de comprovante com metadados
  */
 @Database(
     entities = [
@@ -50,9 +53,10 @@ import br.com.tlmacedo.meuponto.data.local.database.entity.VersaoJornadaEntity
         AuditLogEntity::class,
         FeriadoEntity::class,
         ConfiguracaoPontesAnoEntity::class,
-        AusenciaEntity::class
+        AusenciaEntity::class,
+        FotoComprovanteEntity::class
     ],
-    version = 22,  // ATUALIZADO de 19 para 20
+    version = 23,
     exportSchema = true
 )
 @TypeConverters(Converters::class, FeriadoConverters::class)
@@ -70,6 +74,7 @@ abstract class MeuPontoDatabase : RoomDatabase() {
     abstract fun feriadoDao(): FeriadoDao
     abstract fun configuracaoPontesAnoDao(): ConfiguracaoPontesAnoDao
     abstract fun ausenciaDao(): AusenciaDao
+    abstract fun fotoComprovanteDao(): FotoComprovanteDao
 
     companion object {
         const val DATABASE_NAME = "meuponto.db"

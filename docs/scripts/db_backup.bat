@@ -1,192 +1,535 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal EnableDelayedExpansion
+chcp 65001 >nul 2>&1
 
-REM Arquivo: db_backup.bat
-REM Backup e Restore do banco de dados MeuPonto
+:: ═══════════════════════════════════════════════════════════════════════════════
+::
+::   📦 MeuPonto - Gerenciador de Backup do Banco de Dados (Windows)
+::
+::   Script para backup e restore do banco SQLite via ADB
+::   Compatível com builds debug e release
+::
+::   Uso:
+::     db_backup.bat backup              - Criar backup
+::     db_backup.bat restore             - Restaurar (interativo)
+::     db_backup.bat restore arquivo.db  - Restaurar arquivo específico
+::     db_backup.bat list                - Listar backups
+::     db_backup.bat                     - Mostrar ajuda
+::
+:: ═══════════════════════════════════════════════════════════════════════════════
 
-set PACKAGE_RELEASE=br.com.tlmacedo.meuponto
-set PACKAGE_DEBUG=br.com.tlmacedo.meuponto.debug
-set DB_NAME=meuponto.db
-set BACKUP_DIR=backup_meuponto
+:: ───────────────────────────────────────────────────────────────
+:: CONFIGURAÇÕES
+:: ───────────────────────────────────────────────────────────────
 
-REM Gerar timestamp
-for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value') do set datetime=%%I
-set TIMESTAMP=%datetime:~0,8%_%datetime:~8,6%
+set "PACKAGE_BASE=br.com.tlmacedo.meuponto"
+set "DB_NAME=meuponto.db"
+set "BACKUP_DIR=.\docs\export_meu_ponto"
 
-REM Detectar pacote instalado
-set PACKAGE=
-adb shell "run-as %PACKAGE_DEBUG% ls databases/%DB_NAME%" >nul 2>&1
-if !errorlevel! equ 0 (
-    set PACKAGE=%PACKAGE_DEBUG%
-    set MAIN_ACTIVITY=%PACKAGE_DEBUG%/br.com.tlmacedo.meuponto.MainActivity
-) else (
-    adb shell "run-as %PACKAGE_RELEASE% ls databases/%DB_NAME%" >nul 2>&1
-    if !errorlevel! equ 0 (
-        set PACKAGE=%PACKAGE_RELEASE%
-        set MAIN_ACTIVITY=%PACKAGE_RELEASE%/.MainActivity
-    )
+:: Gerar timestamp
+for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value') do set "DATETIME=%%I"
+set "TIMESTAMP=%DATETIME:~0,4%%DATETIME:~4,2%%DATETIME:~6,2%_%DATETIME:~8,2%%DATETIME:~10,2%%DATETIME:~12,2%"
+
+:: ───────────────────────────────────────────────────────────────
+:: VERIFICAÇÃO DO ADB
+:: ───────────────────────────────────────────────────────────────
+
+where adb >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+    echo.
+    echo [91m❌ ADB não encontrado. Instale o Android SDK e adicione ao PATH.[0m
+    echo.
+    exit /b 1
 )
 
-if "%PACKAGE%"=="" (
-    if not "%1"=="" (
-        echo.
-        echo [ERRO] Nenhum pacote MeuPonto encontrado no dispositivo
-        echo        Verifique se o app esta instalado e execute-o pelo menos uma vez
-        goto :end
-    )
+:: Verificar dispositivo conectado
+adb devices 2>nul | findstr /R "device$" >nul
+if %ERRORLEVEL% neq 0 (
+    echo.
+    echo [91m❌ Nenhum dispositivo conectado via ADB.[0m
+    echo.
+    echo    Verifique:
+    echo    1. Dispositivo conectado via USB
+    echo    2. Depuração USB ativada
+    echo    3. Autorização de depuração aceita no dispositivo
+    echo.
+    exit /b 1
 )
 
-if "%1"=="" goto :usage
-if "%1"=="backup" goto :backup
-if "%1"=="restore" goto :restore
-if "%1"=="list" goto :list
-if "%1"=="check" goto :check
-if "%1"=="info" goto :info
-goto :usage
+:: ───────────────────────────────────────────────────────────────
+:: DETECÇÃO DE PACOTE
+:: ───────────────────────────────────────────────────────────────
 
-:backup
-echo.
-echo [BACKUP] Fazendo backup do banco de dados...
-echo          Pacote: %PACKAGE%
-echo.
+set "PACKAGE="
 
+:: Verificar debug primeiro
+adb shell pm list packages 2>nul | findstr /C:"%PACKAGE_BASE%.debug" >nul
+if %ERRORLEVEL% equ 0 (
+    set "PACKAGE=%PACKAGE_BASE%.debug"
+    goto :package_found
+)
+
+:: Verificar release
+adb shell pm list packages 2>nul | findstr /C:"%PACKAGE_BASE%" >nul
+if %ERRORLEVEL% equ 0 (
+    set "PACKAGE=%PACKAGE_BASE%"
+    goto :package_found
+)
+
+:: Pacote não encontrado
+if "%1" neq "list" if "%1" neq "" (
+    echo.
+    echo [91m❌ Nenhum pacote MeuPonto encontrado no dispositivo[0m
+    echo    Verifique se o app está instalado e execute-o pelo menos uma vez
+    echo.
+    exit /b 1
+)
+
+:package_found
+
+:: ───────────────────────────────────────────────────────────────
+:: ROTEAMENTO DE COMANDOS
+:: ───────────────────────────────────────────────────────────────
+
+if "%1"=="backup" goto :cmd_backup
+if "%1"=="restore" goto :cmd_restore
+if "%1"=="list" goto :cmd_list
+goto :cmd_help
+
+:: ═══════════════════════════════════════════════════════════════════════════════
+:: COMANDO: BACKUP
+:: ═══════════════════════════════════════════════════════════════════════════════
+
+:cmd_backup
 if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
 
-set BACKUP_FILE=%BACKUP_DIR%\meuponto_%TIMESTAMP%.db
+set "BACKUP_FILE=%BACKUP_DIR%\meuponto_%TIMESTAMP%.db"
+set "WAL_FILE=%BACKUP_FILE%-wal"
+set "SHM_FILE=%BACKUP_FILE%-shm"
 
-REM Checkpoint WAL antes do backup
-adb shell "run-as %PACKAGE% sqlite3 databases/%DB_NAME% 'PRAGMA wal_checkpoint(TRUNCATE);'" 2>nul
+echo.
+echo ╔═══════════════════════════════════════════════════════════╗
+echo ║              📦 BACKUP DO BANCO DE DADOS                  ║
+echo ╚═══════════════════════════════════════════════════════════╝
+echo.
+echo    Pacote:  %PACKAGE%
+echo    Destino: %BACKUP_DIR%
+echo.
+echo ═══════════════════════════════════════════════════════════════
+echo.
 
+:: 1. Parar o app
+echo 🛑 [1/6] Parando app para garantir consistência...
+adb shell am force-stop %PACKAGE%
+timeout /t 1 /nobreak >nul
+
+:: 2. Tentar checkpoint WAL no dispositivo
+echo ⏳ [2/6] Tentando checkpoint WAL no dispositivo...
+set "CHECKPOINT_REMOTE=false"
+adb shell "run-as %PACKAGE% sqlite3 databases/%DB_NAME% 'PRAGMA wal_checkpoint(TRUNCATE);'" 2>nul | findstr /C:"error" /C:"not found" /C:"inaccessible" >nul
+if %ERRORLEVEL% neq 0 (
+    echo    ✓ WAL consolidado no dispositivo
+    set "CHECKPOINT_REMOTE=true"
+) else (
+    echo    [93m⚠️  sqlite3 não disponível no dispositivo[0m
+    echo    → Checkpoint será feito localmente após cópia
+)
+timeout /t 1 /nobreak >nul
+
+:: 3. Verificar arquivos
+echo 📂 [3/6] Verificando arquivos no dispositivo...
+adb shell "run-as %PACKAGE% ls -la databases/" 2>nul | findstr /C:"meuponto" /C:".db"
+
+:: 4. Copiar banco de dados + WAL + SHM
+echo ⏳ [4/6] Copiando banco de dados...
+
+:: Copiar arquivo principal
 adb shell "run-as %PACKAGE% cat databases/%DB_NAME%" > "%BACKUP_FILE%"
 
-for %%A in ("%BACKUP_FILE%") do set SIZE=%%~zA
+:: Copiar WAL e SHM
+adb shell "run-as %PACKAGE% cat databases/%DB_NAME%-wal" > "%WAL_FILE%" 2>nul
+adb shell "run-as %PACKAGE% cat databases/%DB_NAME%-shm" > "%SHM_FILE%" 2>nul
 
-if !SIZE! GTR 1000 (
-    echo [OK] Backup salvo: %BACKUP_FILE% ^(!SIZE! bytes^)
+:: 5. Consolidar WAL localmente
+echo 🔄 [5/6] Consolidando WAL localmente...
+
+:: Verificar tamanho do WAL
+for %%A in ("%WAL_FILE%") do set "WAL_SIZE=%%~zA"
+if not defined WAL_SIZE set "WAL_SIZE=0"
+
+if %WAL_SIZE% gtr 0 (
+    echo    📝 WAL encontrado ^(%WAL_SIZE% bytes^)
+
+    :: Verificar se sqlite3 está disponível localmente
+    where sqlite3 >nul 2>&1
+    if %ERRORLEVEL% equ 0 (
+        sqlite3 "%BACKUP_FILE%" "PRAGMA wal_checkpoint(TRUNCATE);" 2>nul
+        if %ERRORLEVEL% equ 0 (
+            echo    ✓ WAL consolidado com sucesso
+            del /f /q "%WAL_FILE%" 2>nul
+            del /f /q "%SHM_FILE%" 2>nul
+        ) else (
+            echo    [93m⚠️  Erro ao consolidar WAL - mantendo arquivos separados[0m
+        )
+    ) else (
+        echo    [93m⚠️  sqlite3 não encontrado localmente[0m
+        echo    → Instale sqlite3 ou os arquivos WAL/SHM serão mantidos separados
+    )
 ) else (
-    echo [ERRO] Arquivo muito pequeno ^(!SIZE! bytes^). Backup falhou.
-    del "%BACKUP_FILE%" 2>nul
-)
-goto :end
-
-:restore
-if "%2"=="" (
-    echo.
-    echo [ERRO] Especifique o arquivo de backup.
-    echo.
-    echo Uso: %0 restore ^<arquivo.db^>
-    echo.
-    goto :list
+    echo    ✓ WAL vazio ou já consolidado
+    del /f /q "%WAL_FILE%" 2>nul
+    del /f /q "%SHM_FILE%" 2>nul
 )
 
-if not exist "%2" (
+:: 6. Verificar resultado
+echo 🔍 [6/6] Verificando backup...
+
+for %%A in ("%BACKUP_FILE%") do set "SIZE=%%~zA"
+if not defined SIZE set "SIZE=0"
+
+if %SIZE% gtr 1000 (
+    :: Calcular tamanho legível
+    set /a "SIZE_KB=%SIZE%/1024"
+
+    :: Verificar integridade (se sqlite3 disponível)
+    set "INTEGRITY=unknown"
+    where sqlite3 >nul 2>&1
+    if %ERRORLEVEL% equ 0 (
+        for /f "tokens=*" %%I in ('sqlite3 "%BACKUP_FILE%" "PRAGMA integrity_check;" 2^>nul') do set "INTEGRITY=%%I"
+    )
+
+    :: Contar registros
+    set "PONTOS_COUNT=?"
+    where sqlite3 >nul 2>&1
+    if %ERRORLEVEL% equ 0 (
+        for /f "tokens=*" %%I in ('sqlite3 "%BACKUP_FILE%" "SELECT COUNT(*) FROM pontos;" 2^>nul') do set "PONTOS_COUNT=%%I"
+    )
+
+    :: Mostrar últimos registros
     echo.
-    echo [ERRO] Arquivo nao encontrado: %2
-    goto :end
+    echo    📋 Últimos 3 pontos no backup:
+    where sqlite3 >nul 2>&1
+    if %ERRORLEVEL% equ 0 (
+        for /f "tokens=*" %%I in ('sqlite3 -separator " | " "%BACKUP_FILE%" "SELECT id, data, hora, nsr FROM pontos ORDER BY id DESC LIMIT 3;" 2^>nul') do (
+            echo       %%I
+        )
+    ) else (
+        echo       [sqlite3 não disponível para verificação]
+    )
+
+    echo.
+    echo ═══════════════════════════════════════════════════════════════
+    echo.
+
+    if "!INTEGRITY!"=="ok" (
+        echo [92m✅ Backup concluído com sucesso![0m
+    ) else (
+        echo [92m✅ Backup concluído![0m
+        if "!INTEGRITY!" neq "unknown" (
+            echo [93m   ⚠️  Integridade: !INTEGRITY![0m
+        )
+    )
+
+    echo.
+    echo    📄 Arquivo:    meuponto_%TIMESTAMP%.db
+    echo    📊 Tamanho:    !SIZE_KB! KB
+    echo    📝 Registros:  !PONTOS_COUNT! pontos
+    echo    📁 Caminho:    %BACKUP_FILE%
+    echo.
+) else (
+    echo.
+    echo [91m❌ Erro: arquivo muito pequeno ^(%SIZE% bytes^)[0m
+    echo    O backup pode estar corrompido
+    del /f /q "%BACKUP_FILE%" 2>nul
+    del /f /q "%WAL_FILE%" 2>nul
+    del /f /q "%SHM_FILE%" 2>nul
+    exit /b 1
+)
+
+goto :eof
+
+:: ═══════════════════════════════════════════════════════════════════════════════
+:: COMANDO: RESTORE
+:: ═══════════════════════════════════════════════════════════════════════════════
+
+:cmd_restore
+echo.
+echo ╔═══════════════════════════════════════════════════════════╗
+echo ║            📥 RESTAURAÇÃO DO BANCO DE DADOS               ║
+echo ╚═══════════════════════════════════════════════════════════╝
+echo.
+echo    Pacote: %PACKAGE%
+echo    Origem: %BACKUP_DIR%
+echo.
+
+:: Verificar se foi passado um arquivo como argumento
+if not "%2"=="" (
+    if exist "%2" (
+        set "SELECTED_FILE=%2"
+        for %%F in ("%2") do set "SELECTED_NAME=%%~nxF"
+        echo 📄 Arquivo especificado: !SELECTED_NAME!
+        goto :restore_confirm
+    ) else (
+        echo [91m❌ Arquivo não encontrado: %2[0m
+        echo.
+        exit /b 1
+    )
+)
+
+:: Modo interativo: listar e escolher
+if not exist "%BACKUP_DIR%\*.db" (
+    echo [91m❌ Nenhum backup encontrado em: %BACKUP_DIR%[0m
+    echo.
+    echo    Execute primeiro: %0 backup
+    echo.
+    exit /b 1
+)
+
+echo 📋 Backups disponíveis (mais recentes primeiro^):
+echo.
+
+:: Listar backups com numeração
+set "COUNT=0"
+for /f "tokens=*" %%F in ('dir /b /o-d "%BACKUP_DIR%\*.db" 2^>nul') do (
+    set /a "COUNT+=1"
+    set "BACKUP_!COUNT!=%%F"
+
+    :: Obter tamanho
+    for %%A in ("%BACKUP_DIR%\%%F") do set /a "SIZE_KB=%%~zA/1024"
+
+    :: Extrair data do nome (formato: meuponto_YYYYMMDD_HHMMSS.db)
+    set "FNAME=%%~nF"
+    set "FDATE=!FNAME:~9,4!/!FNAME:~13,2!/!FNAME:~15,2! !FNAME:~18,2!:!FNAME:~20,2!:!FNAME:~22,2!"
+
+    echo    [!COUNT!] %%F   !FDATE!   !SIZE_KB! KB
 )
 
 echo.
-echo [RESTORE] Restaurando banco de dados...
-echo           Pacote: %PACKAGE%
-echo           Arquivo: %2
+echo    [0] Cancelar
 echo.
 
-echo [1/6] Parando app...
+set /p "CHOICE=👉 Digite o número do backup para restaurar: "
+
+if "%CHOICE%"=="0" (
+    echo.
+    echo ❌ Operação cancelada
+    echo.
+    exit /b 0
+)
+
+if "%CHOICE%"=="" (
+    echo.
+    echo ❌ Operação cancelada
+    echo.
+    exit /b 0
+)
+
+:: Validar escolha
+set "SELECTED_NAME=!BACKUP_%CHOICE%!"
+if not defined SELECTED_NAME (
+    echo.
+    echo [91m❌ Opção inválida: %CHOICE%[0m
+    echo.
+    exit /b 1
+)
+
+set "SELECTED_FILE=%BACKUP_DIR%\!SELECTED_NAME!"
+
+:restore_confirm
+:: Mostrar informações do arquivo selecionado
+for %%A in ("%SELECTED_FILE%") do set /a "SELECTED_SIZE_KB=%%~zA/1024"
+
+set "PONTOS_NO_BACKUP=?"
+where sqlite3 >nul 2>&1
+if %ERRORLEVEL% equ 0 (
+    for /f "tokens=*" %%I in ('sqlite3 "%SELECTED_FILE%" "SELECT COUNT(*) FROM pontos;" 2^>nul') do set "PONTOS_NO_BACKUP=%%I"
+)
+
+echo.
+echo ═══════════════════════════════════════════════════════════════
+echo.
+echo [93m⚠️  ATENÇÃO: Esta operação irá SUBSTITUIR o banco atual![0m
+echo.
+echo    📄 Arquivo:    !SELECTED_NAME!
+echo    📊 Tamanho:    !SELECTED_SIZE_KB! KB
+echo    📝 Registros:  !PONTOS_NO_BACKUP! pontos
+echo    📁 Caminho:    %SELECTED_FILE%
+echo.
+
+set /p "CONFIRM=❓ Confirma a restauração? (s/n): "
+
+if /i not "%CONFIRM%"=="s" (
+    echo.
+    echo ❌ Operação cancelada
+    echo.
+    exit /b 0
+)
+
+echo.
+echo ═══════════════════════════════════════════════════════════════
+echo.
+
+echo 🛑 [1/7] Parando app...
 adb shell am force-stop %PACKAGE%
-timeout /t 1 >nul
+timeout /t 1 /nobreak >nul
 
-echo [2/6] Enviando backup para dispositivo...
-adb push "%2" /data/local/tmp/restore.db
+echo 🧹 [2/7] Limpando cache do app...
+adb shell "run-as %PACKAGE% rm -rf cache/*" 2>nul
 
-echo [3/6] Removendo arquivos WAL antigos...
-adb shell "run-as %PACKAGE% rm -f databases/%DB_NAME%-shm databases/%DB_NAME%-wal"
+echo 📤 [3/7] Enviando backup para dispositivo...
+adb push "%SELECTED_FILE%" /data/local/tmp/restore.db
 
-echo [4/6] Copiando banco...
+echo 🗑️  [4/7] Removendo banco atual e arquivos WAL...
+adb shell "run-as %PACKAGE% rm -f databases/%DB_NAME% databases/%DB_NAME%-shm databases/%DB_NAME%-wal"
+
+echo 📥 [5/7] Copiando banco restaurado...
 adb shell "cat /data/local/tmp/restore.db | run-as %PACKAGE% sh -c 'cat > databases/%DB_NAME%'"
 
-echo [5/6] Ajustando permissoes...
+echo 🔒 [6/7] Ajustando permissões...
 adb shell "run-as %PACKAGE% chmod 660 databases/%DB_NAME%"
 
-echo [6/6] Limpando arquivos temporarios...
+echo 🧹 [7/7] Limpando temporários...
 adb shell rm /data/local/tmp/restore.db
 
+:: Verificar restauração
 echo.
-echo [OK] Restauracao concluida!
-echo.
+echo 🔍 Verificando restauração...
 
-set /p OPEN_APP="Deseja abrir o app? (S/N): "
-if /i "%OPEN_APP%"=="S" (
-    adb shell am start -n %MAIN_ACTIVITY%
+set "PONTOS_RESTAURADOS=?"
+for /f "tokens=*" %%I in ('adb shell "run-as %PACKAGE% sqlite3 databases/%DB_NAME% 'SELECT COUNT(*) FROM pontos;'" 2^>nul') do (
+    set "PONTOS_RESTAURADOS=%%I"
 )
-goto :end
+:: Remover caracteres de retorno de carro
+set "PONTOS_RESTAURADOS=!PONTOS_RESTAURADOS: =!"
 
-:list
 echo.
-echo [LIST] Backups disponiveis em %BACKUP_DIR%:
+echo ═══════════════════════════════════════════════════════════════
 echo.
-if exist "%BACKUP_DIR%\*.db" (
-    echo -----------------------------------------------
-    for %%F in ("%BACKUP_DIR%\*.db") do (
-        echo   %%~nxF  ^(%%~zF bytes^)
-    )
-    echo -----------------------------------------------
+
+if "!PONTOS_RESTAURADOS!"=="!PONTOS_NO_BACKUP!" (
+    echo [92m✅ Restauração concluída com sucesso![0m
+    echo.
+    echo    📝 Pontos restaurados: !PONTOS_RESTAURADOS!
 ) else (
-    echo Nenhum backup encontrado
+    echo [93m⚠️  Restauração concluída, mas verifique os dados[0m
+    echo.
+    echo    📝 Pontos no backup:     !PONTOS_NO_BACKUP!
+    echo    📝 Pontos restaurados:   !PONTOS_RESTAURADOS!
+)
+
+echo.
+set /p "OPEN_APP=🚀 Deseja abrir o app agora? (s/n): "
+if /i "%OPEN_APP%"=="s" (
+    echo.
+    echo ⏳ Iniciando app...
+    adb shell monkey -p "%PACKAGE%" -c android.intent.category.LAUNCHER 1 >nul 2>&1
+    echo [92m✅ App iniciado![0m
 )
 echo.
-goto :end
 
-:check
-echo.
-echo [CHECK] Verificando banco no dispositivo...
-echo         Pacote: %PACKAGE%
-echo.
-adb shell "run-as %PACKAGE% ls -la databases/"
-goto :end
+goto :eof
 
-:info
+:: ═══════════════════════════════════════════════════════════════════════════════
+:: COMANDO: LIST
+:: ═══════════════════════════════════════════════════════════════════════════════
+
+:cmd_list
 echo.
-echo [INFO] Informacoes do banco...
-echo        Pacote: %PACKAGE%
+echo ╔═══════════════════════════════════════════════════════════╗
+echo ║              📋 BACKUPS DISPONÍVEIS                       ║
+echo ╚═══════════════════════════════════════════════════════════╝
 echo.
-echo Tabelas:
-adb shell "run-as %PACKAGE% sqlite3 databases/%DB_NAME% '.tables'"
+echo    Diretório: %BACKUP_DIR%
 echo.
-echo Contagem de registros:
-for %%T in (emprego configuracao_emprego versao_jornada ponto) do (
-    for /f %%C in ('adb shell "run-as %PACKAGE% sqlite3 databases/%DB_NAME% 'SELECT COUNT(*) FROM %%T;'" 2^>nul') do (
-        echo   %%T: %%C
+
+if not exist "%BACKUP_DIR%\*.db" (
+    echo    [93mNenhum backup encontrado[0m
+    echo.
+    echo    Execute: %0 backup
+    echo.
+    exit /b 0
+)
+
+echo    [96m#    Arquivo                        Data                 Tamanho[0m
+echo    ──── ────────────────────────────── ──────────────────── ────────
+
+set "COUNT=0"
+set "TOTAL_SIZE=0"
+
+for /f "tokens=*" %%F in ('dir /b /o-d "%BACKUP_DIR%\*.db" 2^>nul') do (
+    set /a "COUNT+=1"
+
+    :: Obter tamanho
+    for %%A in ("%BACKUP_DIR%\%%F") do (
+        set "FILE_SIZE=%%~zA"
+        set /a "SIZE_KB=%%~zA/1024"
+        set /a "TOTAL_SIZE+=%%~zA"
     )
-)
-goto :end
 
-:usage
-echo.
-echo ===================================
-echo   MeuPonto - Backup de Banco
-echo ===================================
-echo.
-if not "%PACKAGE%"=="" (
-    echo Pacote detectado: %PACKAGE%
+    :: Extrair data do nome
+    set "FNAME=%%~nF"
+    set "FDATE=!FNAME:~15,2!/!FNAME:~13,2!/!FNAME:~9,4! !FNAME:~18,2!:!FNAME:~20,2!:!FNAME:~22,2!"
+
+    :: Formatar número
+    if !COUNT! lss 10 (
+        set "NUM_PAD=[!COUNT!] "
+    ) else (
+        set "NUM_PAD=[!COUNT!]"
+    )
+
+    echo    !NUM_PAD! %%F   !FDATE!   !SIZE_KB! KB
+)
+
+set /a "TOTAL_KB=%TOTAL_SIZE%/1024"
+if %TOTAL_KB% gtr 1024 (
+    set /a "TOTAL_MB=%TOTAL_KB%/1024"
+    set "TOTAL_STR=!TOTAL_MB! MB"
 ) else (
-    echo Pacote detectado: Nenhum
+    set "TOTAL_STR=%TOTAL_KB% KB"
+)
+
+echo.
+echo ═══════════════════════════════════════════════════════════════
+echo.
+echo    Total: %COUNT% backup(s), %TOTAL_STR%
+echo.
+
+goto :eof
+
+:: ═══════════════════════════════════════════════════════════════════════════════
+:: COMANDO: HELP
+:: ═══════════════════════════════════════════════════════════════════════════════
+
+:cmd_help
+echo.
+echo ╔═══════════════════════════════════════════════════════════╗
+echo ║     📦 MeuPonto - Gerenciador de Backup do Banco          ║
+echo ╚═══════════════════════════════════════════════════════════╝
+echo.
+echo    Uso: %~nx0 ^<comando^> [opções]
+echo.
+echo    ┌─────────────────────────────────────────────────────────┐
+echo    │  Comandos disponíveis:                                  │
+echo    ├─────────────────────────────────────────────────────────┤
+echo    │  backup      Cria backup do banco de dados              │
+echo    │  restore     Restaura backup (menu ou arquivo direto)   │
+echo    │  list        Lista todos os backups disponíveis         │
+echo    └─────────────────────────────────────────────────────────┘
+echo.
+echo    Exemplos:
+echo      %~nx0 backup                         # Criar backup
+echo      %~nx0 restore                        # Restaurar (interativo)
+echo      %~nx0 restore arquivo.db             # Restaurar arquivo específico
+echo      %~nx0 list                           # Ver backups
+echo.
+echo    Configurações:
+echo      Banco:      %DB_NAME%
+echo      Backups:    %BACKUP_DIR%
+if defined PACKAGE (
+    echo      Pacote:     %PACKAGE%
+) else (
+    echo      Pacote:     (será detectado automaticamente)
 )
 echo.
-echo Uso: %0 [comando]
-echo.
-echo Comandos:
-echo   backup              Cria backup do banco
-echo   restore ^<arquivo^>   Restaura um backup
-echo   list                Lista backups disponiveis
-echo   check               Verifica banco no dispositivo
-echo   info                Mostra informacoes do banco
-echo.
-echo Exemplos:
-echo   %0 backup
-echo   %0 restore backup_meuponto\meuponto_20260303_220000.db
-echo   %0 list
-echo.
-goto :end
 
-:end
-endlocal
+goto :eof

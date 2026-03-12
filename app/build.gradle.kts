@@ -59,7 +59,8 @@ android {
         disable += listOf(
             "MultipleAwaitPointerEventScopes",
             "ReturnFromAwaitPointerEventScope",
-            "FlowOperatorInvokedInComposition"
+            "FlowOperatorInvokedInComposition",
+            "StateFlowValueCalledInComposition"
         )
         abortOnError = false
         checkTestSources = false
@@ -82,6 +83,7 @@ ksp {
 dependencies {
     // Core Android
     implementation(libs.androidx.core.ktx)
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation(libs.androidx.activity.compose)
 
     // Lifecycle

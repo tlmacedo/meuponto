@@ -96,7 +96,7 @@ class ComprovanteImageStorage @Inject constructor(
         uri: Uri,
         empregoId: Long,
         pontoId: Long,
-        data: LocalDate
+        dataHora: LocalDateTime  // ← Mudança: de LocalDate para LocalDateTime
     ): String? {
         return try {
             val inputStream = context.contentResolver.openInputStream(uri) ?: return null
@@ -106,7 +106,7 @@ class ComprovanteImageStorage @Inject constructor(
             if (originalBitmap == null) return null
 
             val resizedBitmap = resizeIfNeeded(originalBitmap)
-            saveBitmap(resizedBitmap, empregoId, pontoId, data).also {
+            saveBitmap(resizedBitmap, empregoId, pontoId, dataHora).also {  // ← Passa dataHora
                 if (resizedBitmap != originalBitmap) {
                     resizedBitmap.recycle()
                 }
@@ -117,6 +117,7 @@ class ComprovanteImageStorage @Inject constructor(
             null
         }
     }
+
 
     /**
      * Salva uma imagem de comprovante a partir de um Bitmap.
@@ -131,11 +132,11 @@ class ComprovanteImageStorage @Inject constructor(
         bitmap: Bitmap,
         empregoId: Long,
         pontoId: Long,
-        data: LocalDate
+        dataHora: LocalDateTime  // ← Mudança
     ): String? {
         return try {
             val resizedBitmap = resizeIfNeeded(bitmap)
-            saveBitmap(resizedBitmap, empregoId, pontoId, data).also {
+            saveBitmap(resizedBitmap, empregoId, pontoId, dataHora).also {
                 if (resizedBitmap != bitmap) {
                     resizedBitmap.recycle()
                 }
@@ -150,11 +151,12 @@ class ComprovanteImageStorage @Inject constructor(
         bitmap: Bitmap,
         empregoId: Long,
         pontoId: Long,
-        data: LocalDate
+        dataHora: LocalDateTime  // ← Mudança
     ): String? {
         return try {
+            val data = dataHora.toLocalDate()
             val directory = getOrCreateDirectory(empregoId, data)
-            val fileName = generateFileName(pontoId)
+            val fileName = generateFileName(pontoId, dataHora)  // ← Passa dataHora
             val file = File(directory, fileName)
 
             FileOutputStream(file).use { outputStream ->
@@ -162,7 +164,6 @@ class ComprovanteImageStorage @Inject constructor(
                 outputStream.flush()
             }
 
-            // Retorna caminho relativo a partir do diretório de comprovantes
             getRelativePath(empregoId, data, fileName)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -390,8 +391,8 @@ class ComprovanteImageStorage @Inject constructor(
         }
     }
 
-    private fun generateFileName(pontoId: Long): String {
-        val timestamp = LocalDateTime.now().format(timestampFormatter)
+    private fun generateFileName(pontoId: Long, dataHora: LocalDateTime): String {
+        val timestamp = dataHora.format(timestampFormatter)  // ← Usa hora do ponto
         return "ponto_${pontoId}_$timestamp.jpg"
     }
 

@@ -138,4 +138,15 @@ interface PontoDao {
 
     @Query("UPDATE pontos SET empregoId = :empregoId WHERE empregoId = :empregoIdAntigo")
     suspend fun migrarParaEmprego(empregoIdAntigo: Long, empregoId: Long): Int
+
+    // ========================================================================
+    // Atualização de foto de comprovante
+    // ========================================================================
+
+    @Query("""
+        UPDATE pontos 
+        SET fotoComprovantePath = :fotoPath 
+        WHERE id = :pontoId
+    """)
+    suspend fun atualizarFotoComprovante(pontoId: Long, fotoPath: String?)
 }

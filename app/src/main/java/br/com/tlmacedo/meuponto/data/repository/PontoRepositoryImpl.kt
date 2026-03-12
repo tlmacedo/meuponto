@@ -4,6 +4,7 @@ package br.com.tlmacedo.meuponto.data.repository
 import br.com.tlmacedo.meuponto.data.local.database.dao.PontoDao
 import br.com.tlmacedo.meuponto.data.local.database.entity.toDomain
 import br.com.tlmacedo.meuponto.data.local.database.entity.toEntity
+import br.com.tlmacedo.meuponto.data.local.database.util.DatabaseCheckpointManager
 import br.com.tlmacedo.meuponto.domain.model.Ponto
 import br.com.tlmacedo.meuponto.domain.repository.PontoRepository
 import kotlinx.coroutines.flow.Flow
@@ -22,34 +23,51 @@ import javax.inject.Singleton
  * de banco de dados (PontoEntity).
  *
  * @property pontoDao DAO do Room para operações de banco de dados
+ * @property checkpointManager Gerenciador de checkpoint WAL para persistência imediata
  *
  * @author Thiago
  * @since 1.0.0
  * @updated 2.0.0 - Adicionado suporte a múltiplos empregos e marcadores
+ * @updated 9.1.0 - Adicionado checkpoint WAL após operações de escrita
  */
 @Singleton
 class PontoRepositoryImpl @Inject constructor(
-    private val pontoDao: PontoDao
+    private val pontoDao: PontoDao,
+    private val checkpointManager: DatabaseCheckpointManager
 ) : PontoRepository {
 
     // ========================================================================
-    // Operações de Escrita (CRUD)
+    // Operações de Escrita (CRUD) - COM CHECKPOINT
     // ========================================================================
 
     override suspend fun inserir(ponto: Ponto): Long {
-        return pontoDao.inserir(ponto.toEntity())
+        val id = pontoDao.inserir(ponto.toEntity())
+
+        // Checkpoint após inserção para garantir persistência imediata
+        checkpointManager.checkpoint()
+
+        return id
     }
 
     override suspend fun atualizar(ponto: Ponto) {
         pontoDao.atualizar(ponto.toEntity())
+
+        // Checkpoint após atualização
+        checkpointManager.checkpoint()
     }
 
     override suspend fun excluir(ponto: Ponto) {
         pontoDao.excluir(ponto.toEntity())
+
+        // Checkpoint após exclusão
+        checkpointManager.checkpoint()
     }
 
     override suspend fun excluirPorId(id: Long) {
         pontoDao.excluirPorId(id)
+
+        // Checkpoint após exclusão
+        checkpointManager.checkpoint()
     }
 
     override suspend fun buscarPrimeiraData(empregoId: Long): LocalDate? {
@@ -63,10 +81,11 @@ class PontoRepositoryImpl @Inject constructor(
             atualizadoEm = LocalDateTime.now()
         )
         atualizar(pontoAtualizado)
+        // Checkpoint já é chamado dentro de atualizar()
     }
 
     // ========================================================================
-    // Operações de Leitura - Por ID
+    // Operações de Leitura - Por ID (sem checkpoint necessário)
     // ========================================================================
 
     override suspend fun buscarPorId(id: Long): Ponto? {
@@ -234,6 +253,11 @@ class PontoRepositoryImpl @Inject constructor(
     // ========================================================================
 
     override suspend fun migrarParaEmprego(empregoIdOrigem: Long, empregoIdDestino: Long): Int {
-        return pontoDao.migrarParaEmprego(empregoIdOrigem, empregoIdDestino)
+        val count = pontoDao.migrarParaEmprego(empregoIdOrigem, empregoIdDestino)
+
+        // Checkpoint após migração em lote
+        checkpointManager.checkpoint()
+
+        return count
     }
 }

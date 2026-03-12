@@ -8,6 +8,7 @@ import br.com.tlmacedo.meuponto.domain.model.ConfiguracaoEmprego
 import br.com.tlmacedo.meuponto.domain.model.Emprego
 import br.com.tlmacedo.meuponto.domain.model.FechamentoPeriodo
 import br.com.tlmacedo.meuponto.domain.model.IntervaloPonto
+import br.com.tlmacedo.meuponto.domain.model.MotivoEdicao
 import br.com.tlmacedo.meuponto.domain.model.Ponto
 import br.com.tlmacedo.meuponto.domain.model.ResumoDia
 import br.com.tlmacedo.meuponto.domain.model.TipoDiaEspecial
@@ -65,6 +66,49 @@ sealed class EstadoCiclo {
 }
 
 /**
+ * Estado de edição inline de um ponto.
+ *
+ * @author Thiago
+ * @since 7.0.0
+ */
+data class EdicaoInlineState(
+    val pontoId: Long = 0,
+    val hora: LocalTime = LocalTime.now(),
+    val nsr: String = "",
+    val motivoSelecionado: MotivoEdicao = MotivoEdicao.NENHUM,
+    val motivoDetalhes: String = "",
+    val showTimePicker: Boolean = false,
+    val isSaving: Boolean = false,
+    val erro: String? = null
+) {
+    companion object {
+        private val formatterHora = DateTimeFormatter.ofPattern("HH:mm")
+    }
+
+    val horaFormatada: String
+        get() = hora.format(formatterHora)
+
+    val motivoValido: Boolean
+        get() = when {
+            motivoSelecionado == MotivoEdicao.NENHUM -> false
+            motivoSelecionado == MotivoEdicao.OUTRO -> motivoDetalhes.trim().length >= 5
+            motivoSelecionado.requerDetalhes -> motivoDetalhes.trim().length >= 5
+            else -> true
+        }
+
+    val podeSalvar: Boolean
+        get() = motivoValido && !isSaving
+
+    val motivoCompleto: String
+        get() = when {
+            motivoSelecionado == MotivoEdicao.OUTRO -> motivoDetalhes.trim()
+            motivoSelecionado.requerDetalhes && motivoDetalhes.isNotBlank() ->
+                "${motivoSelecionado.descricao}: ${motivoDetalhes.trim()}"
+            else -> motivoSelecionado.descricao
+        }
+}
+
+/**
  * Estado da tela Home.
  *
  * @author Thiago
@@ -73,6 +117,7 @@ sealed class EstadoCiclo {
  * @updated 6.0.0 - Adicionado campo motivoExclusao para auditoria obrigatória
  * @updated 6.2.0 - Adicionado suporte a ciclos de banco de horas
  * @updated 6.4.0 - Adicionado fechamentoCicloAnterior para exibir marco de início de ciclo
+ * @updated 7.0.0 - Adicionado suporte a edição inline de pontos
  */
 data class HomeUiState(
     val dataSelecionada: LocalDate = LocalDate.now(),
@@ -102,6 +147,8 @@ data class HomeUiState(
     val nsrPendente: String = "",
     // Foto de comprovante
     val fotoComprovanteUri: Uri? = null,
+    val showFotoSourceDialog: Boolean = false,
+    val cameraUri: Uri? = null,
     val horaPendenteParaRegistro: LocalTime? = null,
     // Exclusão de ponto
     val pontoParaExcluir: Ponto? = null,
@@ -111,7 +158,12 @@ data class HomeUiState(
     val estadoCiclo: EstadoCiclo = EstadoCiclo.Nenhum,
     val showFechamentoCicloDialog: Boolean = false,
     // Fechamento de ciclo anterior (para exibir marco de início de novo ciclo)
-    val fechamentoCicloAnterior: FechamentoPeriodo? = null
+    val fechamentoCicloAnterior: FechamentoPeriodo? = null,
+    // ════════════════════════════════════════════════════════════════════
+    // EDIÇÃO INLINE
+    // ════════════════════════════════════════════════════════════════════
+    val edicaoInline: EdicaoInlineState? = null,
+    val pontoEmEdicaoId: Long? = null
 ) {
     companion object {
         private val localeBR = Locale("pt", "BR")
@@ -257,6 +309,21 @@ data class HomeUiState(
      */
     val deveExibirBannerFechamentoCiclo: Boolean
         get() = isInicioDeCiclo && fechamentoCicloAnterior != null
+
+    // ========================================================================
+    // EDIÇÃO INLINE - PROPRIEDADES COMPUTADAS
+    // ========================================================================
+
+    /** Verifica se há edição inline ativa */
+    val temEdicaoInlineAtiva: Boolean
+        get() = edicaoInline != null && pontoEmEdicaoId != null
+
+    /** Verifica se um ponto específico está em edição */
+    fun isPontoEmEdicao(pontoId: Long): Boolean = pontoEmEdicaoId == pontoId
+
+    /** Obtém o estado de edição para um ponto específico (ou null se não estiver editando) */
+    fun getEdicaoParaPonto(pontoId: Long): EdicaoInlineState? =
+        if (pontoEmEdicaoId == pontoId) edicaoInline else null
 
     // ========================================================================
     // FORMATAÇÃO DE DATA

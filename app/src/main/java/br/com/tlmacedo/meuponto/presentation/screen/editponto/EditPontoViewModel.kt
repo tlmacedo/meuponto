@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import javax.inject.Inject
 
@@ -276,7 +277,7 @@ class EditPontoViewModel @Inject constructor(
                 uri = uri,
                 empregoId = state.empregoId,
                 pontoId = pontoId,
-                data = state.data
+                dataHora = LocalDateTime.of(state.data, state.hora)
             )
         } catch (e: Exception) {
             android.util.Log.e("EditPontoViewModel", "Erro ao salvar foto: ${e.message}")
@@ -341,7 +342,7 @@ class EditPontoViewModel @Inject constructor(
                 // Editar ponto
                 val parametros = EditarPontoUseCase.Parametros(
                     pontoId = state.pontoId,
-                    dataHora = state.dataHora,
+                    dataHora = LocalDateTime.of(state.data, state.hora),
                     nsr = state.nsr.ifBlank { null },
                     latitude = state.latitude,
                     longitude = state.longitude,

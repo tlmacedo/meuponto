@@ -8,6 +8,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import br.com.tlmacedo.meuponto.data.local.database.MeuPontoDatabase
 import br.com.tlmacedo.meuponto.data.local.database.dao.*
 import br.com.tlmacedo.meuponto.data.local.database.migration.*
+import br.com.tlmacedo.meuponto.data.local.database.util.DatabaseCheckpointManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -21,7 +22,7 @@ import javax.inject.Singleton
  *
  * @author Thiago
  * @since 1.0.0
- * @updated 9.0.0 - Migração 20->21: campo fotoComprovantePath em pontos
+ * @updated 10.0.0 - Migração 22->23: Sistema de foto de comprovante com metadados
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -58,10 +59,23 @@ object DatabaseModule {
                 MIGRATION_18_19,
                 MIGRATION_19_20,
                 MIGRATION_20_21,
-                MIGRATION_21_22
+                MIGRATION_21_22,
+                MIGRATION_22_23
             )
             .addCallback(createDatabaseCallback())
             .build()
+    }
+
+    /**
+     * Provê o gerenciador de checkpoint WAL.
+     * Garante persistência imediata dos dados após operações de escrita.
+     */
+    @Provides
+    @Singleton
+    fun provideDatabaseCheckpointManager(
+        database: MeuPontoDatabase
+    ): DatabaseCheckpointManager {
+        return DatabaseCheckpointManager(database)
     }
 
     private fun createDatabaseCallback(): RoomDatabase.Callback {
@@ -75,36 +89,36 @@ object DatabaseModule {
 
     /**
      * Insere dados iniciais de teste para desenvolvimento.
-     * ATUALIZADO: ConfiguracaoEmprego simplificado, VersaoJornada com campos de jornada/banco
+     * ATUALIZADO: Inclui configurações de foto de comprovante.
      */
     private fun inserirDadosIniciais(db: SupportSQLiteDatabase) {
         val now = LocalDateTime.now().toString()
         val dataAdmissao = "2021-11-10"
 
-        // ========================================================================
+        // ════════════════════════════════════════════════════════════════════
         // 1. EMPREGO
-        // ========================================================================
+        // ════════════════════════════════════════════════════════════════════
         db.execSQL(
             """
             INSERT INTO empregos (
                 id, nome, dataInicioTrabalho, descricao, ativo, arquivado, ordem, criadoEm, atualizadoEm
             ) VALUES (
-                1, 
-                'SIDIA Teste', 
+                1,
+                'SIDIA Teste',
                 '$dataAdmissao',
                 'Emprego para desenvolvimento',
-                1, 
-                0, 
-                0, 
-                '$now', 
+                1,
+                0,
+                0,
+                '$now',
                 '$now'
             )
             """.trimIndent()
         )
 
-        // ========================================================================
-        // 2. CONFIGURAÇÃO DO EMPREGO (SIMPLIFICADA - apenas exibição/comportamento)
-        // ========================================================================
+        // ════════════════════════════════════════════════════════════════════
+        // 2. CONFIGURAÇÃO DO EMPREGO (COM CAMPOS DE FOTO)
+        // ════════════════════════════════════════════════════════════════════
         db.execSQL(
             """
             INSERT INTO configuracoes_emprego (
@@ -114,6 +128,17 @@ object DatabaseModule {
                 habilitarLocalizacao,
                 localizacaoAutomatica,
                 exibirLocalizacaoDetalhes,
+                fotoHabilitada,
+                fotoObrigatoria,
+                fotoFormato,
+                fotoQualidade,
+                fotoResolucaoMaxima,
+                fotoTamanhoMaximoKb,
+                fotoCorrecaoOrientacao,
+                fotoApenasCamera,
+                fotoIncluirLocalizacaoExif,
+                fotoBackupNuvemHabilitado,
+                fotoBackupApenasWifi,
                 exibirDuracaoTurno,
                 exibirDuracaoIntervalo,
                 criadoEm,
@@ -125,6 +150,17 @@ object DatabaseModule {
                 0,
                 0,
                 1,
+                0,
+                0,
+                'JPEG',
+                85,
+                1920,
+                1024,
+                1,
+                0,
+                1,
+                0,
+                1,
                 1,
                 1,
                 '$now',
@@ -133,9 +169,9 @@ object DatabaseModule {
             """.trimIndent()
         )
 
-        // ========================================================================
-        // 3. VERSÃO DE JORNADA (AGORA COM CAMPOS DE JORNADA E BANCO DE HORAS)
-        // ========================================================================
+        // ════════════════════════════════════════════════════════════════════
+        // 3. VERSÃO DE JORNADA
+        // ════════════════════════════════════════════════════════════════════
         db.execSQL(
             """
             INSERT INTO versoes_jornada (
@@ -200,9 +236,9 @@ object DatabaseModule {
             """.trimIndent()
         )
 
-        // ========================================================================
-        // 4. HORÁRIOS POR DIA DA SEMANA (vinculados à versão de jornada)
-        // ========================================================================
+        // ════════════════════════════════════════════════════════════════════
+        // 4. HORÁRIOS POR DIA DA SEMANA
+        // ════════════════════════════════════════════════════════════════════
         val diasUteis = listOf("SEGUNDA", "TERCA", "QUARTA", "QUINTA", "SEXTA")
         diasUteis.forEach { dia ->
             db.execSQL(
@@ -278,9 +314,9 @@ object DatabaseModule {
         }
     }
 
-    // ========================================================================
+    // ════════════════════════════════════════════════════════════════════════
     // PROVIDERS DOS DAOs
-    // ========================================================================
+    // ════════════════════════════════════════════════════════════════════════
 
     @Provides
     @Singleton
@@ -329,4 +365,8 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideAusenciaDao(database: MeuPontoDatabase): AusenciaDao = database.ausenciaDao()
+
+    @Provides
+    @Singleton
+    fun provideFotoComprovanteDao(database: MeuPontoDatabase): FotoComprovanteDao = database.fotoComprovanteDao()
 }
